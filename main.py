@@ -1,12 +1,20 @@
 '''
-Wolf-Sheep Predation Model
-================================
+An agent-based model of local food systems
 
-Replication of the model found in NetLogo:
-    Wilensky, U. (1997). NetLogo Wolf Sheep Predation model.
-    http://ccl.northwestern.edu/netlogo/models/WolfSheepPredation.
-    Center for Connected Learning and Computer-Based Modeling,
-    Northwestern University, Evanston, IL.
+Based on WoflSheep model creted by Project Mesa.
+https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
+'''
+
+
+'''
+Notes
+
+[Name conversion]
+Wolf -> Seller, Sheep -> Buyer
+
+[Killed]
+Grass, reproduction,
+
 '''
 
 import random
@@ -17,68 +25,65 @@ from mesa.space import MultiGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
-from RandomWalk import RandomWalker
+# from RandomWalk import RandomWalker
 
 
-class WolfSheepPredation(Model):
-    '''
-    Wolf-Sheep Predation Model
-    '''
-
+# class WolfSheepPredation(Model):
+class Trade(Model):
     height = 20
     width = 20
 
-    initial_sheep = 100
-    initial_wolves = 50
+    # initial_sheep = 100
+    # initial_wolves = 50
+    initial_buyers = 100
+    initial_sellers = 50
 
-    sheep_reproduce = 0.04
-    wolf_reproduce = 0.05
-
-    wolf_gain_from_food = 20
-
-    grass = False
-    grass_regrowth_time = 30
-    sheep_gain_from_food = 4
+    # sheep_reproduce = 0.04
+    # wolf_reproduce = 0.05
+	#
+    # wolf_gain_from_food = 20
+	#
+    # grass = False
+    # grass_regrowth_time = 30
+    # sheep_gain_from_food = 4
 
     verbose = False # Print-monitoring
 
+    # def __init__(self, height=20, width=20,
+    #              initial_sheep=100, initial_wolves=50,
+    #              sheep_reproduce=0.04, wolf_reproduce=0.05,
+    #              wolf_gain_from_food=20,
+    #              grass=False, grass_regrowth_time=30, sheep_gain_from_food=4):
     def __init__(self, height=20, width=20,
-                 initial_sheep=100, initial_wolves=50,
-                 sheep_reproduce=0.04, wolf_reproduce=0.05,
-                 wolf_gain_from_food=20,
-                 grass=False, grass_regrowth_time=30, sheep_gain_from_food=4):
+                 initial_buyers=100, initial_sellers=50):
         '''
-        Create a new Wolf-Sheep model with the given parameters.
+        Create a new LF model with the given parameters.
 
         Args:
-            initial_sheep: Number of sheep to start with
-            initial_wolves: Number of wolves to start with
-            sheep_reproduce: Probability of each sheep reproducing each step
-            wolf_reproduce: Probability of each wolf reproducing each step
-            wolf_gain_from_food: Energy a wolf gains from eating a sheep
-            grass: Whether to have the sheep eat grass for energy
-            grass_regrowth_time: How long it takes for a grass patch to regrow
-                                 once it is eaten
-            sheep_gain_from_food: Energy sheep gain from grass, if enabled.
+            initial_buyers: Number of buyers to start with
+            initial_sellers: Number of seller to start with
         '''
 
         # Set parameters
         self.height = height
         self.width = width
-        self.initial_sheep = initial_sheep
-        self.initial_wolves = initial_wolves
-        self.sheep_reproduce = sheep_reproduce
-        self.wolf_reproduce = wolf_reproduce
-        self.wolf_gain_from_food = wolf_gain_from_food
-        self.grass = grass
-        self.grass_regrowth_time = grass_regrowth_time
-        self.sheep_gain_from_food = sheep_gain_from_food
+        self.initial_buyers = initial_buyers
+        self.initial_sellers = initial_sellers
+        # self.sheep_reproduce = sheep_reproduce
+        # self.wolf_reproduce = wolf_reproduce
+        # self.wolf_gain_from_food = wolf_gain_from_food
+        # self.grass = grass
+        # self.grass_regrowth_time = grass_regrowth_time
+        # self.sheep_gain_from_food = sheep_gain_from_food
 
         self.schedule = RandomActivationByBreed(self)
         self.grid = MultiGrid(self.height, self.width, torus=True)
+        # self.datacollector = DataCollector(
+        #     {"Wolves": lambda m: m.schedule.get_breed_count(Wolf),
+        #     "Sheep": lambda m: m.schedule.get_breed_count(Sheep)})
         self.datacollector = DataCollector(
-            {"Wolves": lambda m: m.schedule.get_breed_count(Wolf),
-            "Sheep": lambda m: m.schedule.get_breed_count(Sheep)})
+            {"Sellers": lambda m: m.schedule.get_breed_count(Seller),
+            "Buyers": lambda m: m.schedule.get_breed_count(Buyer)})
 
         # Create sheep:
         for i in range(self.initial_sheep):
@@ -126,9 +131,9 @@ class WolfSheepPredation(Model):
     def run_model(self, step_count=200):
 
         if self.verbose:
-            print('Initial number wolves: ', 
+            print('Initial number wolves: ',
                 self.schedule.get_breed_count(Wolf))
-            print('Initial number sheep: ', 
+            print('Initial number sheep: ',
                 self.schedule.get_breed_count(Sheep))
 
         for i in range(step_count):
@@ -136,7 +141,7 @@ class WolfSheepPredation(Model):
 
         if self.verbose:
             print('')
-            print('Final number wolves: ', 
+            print('Final number wolves: ',
                 self.schedule.get_breed_count(Wolf))
             print('Final number sheep: ',
                 self.schedule.get_breed_count(Sheep))
@@ -167,7 +172,7 @@ class Sheep(RandomWalker, Agent):
 
             # If there is grass available, eat it
             this_cell = model.grid.get_cell_list_contents([self.pos])
-            grass_patch = [obj for obj in this_cell 
+            grass_patch = [obj for obj in this_cell
                            if isinstance(obj, GrassPatch)][0]
             if grass_patch.fully_grown:
                 self.energy += model.sheep_gain_from_food
@@ -228,35 +233,35 @@ class Wolf(RandomWalker, Agent):
                 model.schedule.add(cub)
 
 
-class GrassPatch(Agent):
-    '''
-    A patch of grass that grows at a fixed rate and it is eaten by sheep
-    '''
-
-    def __init__(self, fully_grown, countdown):
-        '''
-        Creates a new patch of grass
-
-        Args:
-            grown: (boolean) Whether the patch of grass is fully grown or not
-            countdown: Time for the patch of grass to be fully grown again
-        '''
-        self.fully_grown = fully_grown
-        self.countdown = countdown
-
-    def step(self, model):
-        if not self.fully_grown:
-            if self.countdown <= 0:
-                # Set as fully grown
-                self.fully_grown = True
-                self.countdown = model.grass_regrowth_time
-            else:
-                self.countdown -= 1
-
+# class GrassPatch(Agent):
+#     '''
+#     A patch of grass that grows at a fixed rate and it is eaten by sheep
+#     '''
+#
+#     def __init__(self, fully_grown, countdown):
+#         '''
+#         Creates a new patch of grass
+#
+#         Args:
+#             grown: (boolean) Whether the patch of grass is fully grown or not
+#             countdown: Time for the patch of grass to be fully grown again
+#         '''
+#         self.fully_grown = fully_grown
+#         self.countdown = countdown
+#
+#     def step(self, model):
+#         if not self.fully_grown:
+#             if self.countdown <= 0:
+#                 # Set as fully grown
+#                 self.fully_grown = True
+#                 self.countdown = model.grass_regrowth_time
+#             else:
+#                 self.countdown -= 1
+#
 
 class RandomActivationByBreed(RandomActivation):
     '''
-    A scheduler which activates each type of agent once per step, in random 
+    A scheduler which activates each type of agent once per step, in random
     order, with the order reshuffled every step.
 
     This is equivalent to the NetLogo 'ask breed...' and is generally the
