@@ -10,7 +10,8 @@ https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
 Notes
 
 [Name conversion]
-Wolf -> Seller, Sheep -> Buyer
+Try to match singular, plural, upper, & lower cases.
+e.g. Wolf(ves) -> Seller(s), Sheep -> Buyer and Buyers (unfortunate!)
 
 [Killed]
 Grass, reproduction,
@@ -85,38 +86,38 @@ class Trade(Model):
             {"Sellers": lambda m: m.schedule.get_breed_count(Seller),
             "Buyers": lambda m: m.schedule.get_breed_count(Buyer)})
 
-        # Create sheep:
-        for i in range(self.initial_sheep):
+        # Create buyers:
+        for i in range(self.initial_buyers):
             x = random.randrange(self.width)
             y = random.randrange(self.height)
-            energy = random.randrange(2 * self.sheep_gain_from_food)
-            sheep = Sheep(self.grid, (x, y), True, energy)
-            self.grid.place_agent(sheep, (x, y))
-            self.schedule.add(sheep)
+            # energy = random.randrange(2 * self.sheep_gain_from_food)
+            buyer = Buyer(self.grid, (x, y), True, energy) # energy?
+            self.grid.place_agent(buyer, (x, y))
+            self.schedule.add(buyer)
 
-        # Create wolves
-        for i in range(self.initial_wolves):
+        # Create sellers
+        for i in range(self.initial_sellers):
             x = random.randrange(self.width)
             y = random.randrange(self.height)
             energy = random.randrange(2 * self.wolf_gain_from_food)
-            wolf = Wolf(self.grid, (x, y), True, energy)
-            self.grid.place_agent(wolf, (x, y))
-            self.schedule.add(wolf)
+            seller = Seller(self.grid, (x, y), True, energy)
+            self.grid.place_agent(seller, (x, y))
+            self.schedule.add(seller)
 
-        # Create grass patches
-        if self.grass:
-            for agent, x, y in self.grid.coord_iter():
-
-                fully_grown = random.choice([True, False])
-
-                if fully_grown:
-                    countdown = self.grass_regrowth_time
-                else:
-                    countdown = random.randrange(self.grass_regrowth_time)
-
-                patch = GrassPatch(fully_grown, countdown)
-                self.grid.place_agent(patch, (x, y))
-                self.schedule.add(patch)
+        # # Create grass patches
+        # if self.grass:
+        #     for agent, x, y in self.grid.coord_iter():
+		#
+        #         fully_grown = random.choice([True, False])
+		#
+        #         if fully_grown:
+        #             countdown = self.grass_regrowth_time
+        #         else:
+        #             countdown = random.randrange(self.grass_regrowth_time)
+		#
+        #         patch = GrassPatch(fully_grown, countdown)
+        #         self.grid.place_agent(patch, (x, y))
+        #         self.schedule.add(patch)
 
         self.running = True
 
@@ -125,34 +126,27 @@ class Trade(Model):
         self.datacollector.collect(self)
         if self.verbose:
             print([self.schedule.time,
-                self.schedule.get_breed_count(Wolf),
-                self.schedule.get_breed_count(Sheep)])
+                self.schedule.get_breed_count(Seller),
+                self.schedule.get_breed_count(Buyer)])
 
     def run_model(self, step_count=200):
-
         if self.verbose:
-            print('Initial number wolves: ',
-                self.schedule.get_breed_count(Wolf))
-            print('Initial number sheep: ',
-                self.schedule.get_breed_count(Sheep))
+            print('Initial number sellers: ',
+                self.schedule.get_breed_count(Seller))
+            print('Initial number buyers: ',
+                self.schedule.get_breed_count(Buyer))
 
         for i in range(step_count):
             self.step()
 
         if self.verbose:
             print('')
-            print('Final number wolves: ',
-                self.schedule.get_breed_count(Wolf))
-            print('Final number sheep: ',
-                self.schedule.get_breed_count(Sheep))
+            print('Final number sellers: ',
+                self.schedule.get_breed_count(Seller))
+            print('Final number buyers: ',
+                self.schedule.get_breed_count(Buyer))
 
-class Sheep(RandomWalker, Agent):
-    '''
-    A sheep that walks around, reproduces (asexually) and gets eaten.
-
-    The init is the same as the RandomWalker.
-    '''
-
+class Buyer(RandomWalker, Agent):
     energy = None
 
     def __init__(self, grid, pos, moore, energy=None):
@@ -193,44 +187,49 @@ class Sheep(RandomWalker, Agent):
             model.schedule.add(lamb)
 
 
-class Wolf(RandomWalker, Agent):
-    '''
-    A wolf that walks around, reproduces (asexually) and eats sheep.
-    '''
+class Seller(RandomWalker, Agent):
+'''
+For now, borrow 'energy' to control their mortality.
+A special seller 'W' represetns a conventional producer. Immortal.
+'''
 
     energy = None
 
-    def __init__(self, grid, pos, moore, energy):
+    def __init__(self, grid, pos, moore, energy, price):
         super().__init__(grid, pos, moore)
         self.energy = energy
+		# initial price vector
+		self.price = price
 
     def step(self, model):
-        self.random_move()
-        self.energy -= 1
+		# If selling below the threshold, reduce 1
+		if...
+			self.energy -= 1
 
-        # If there are sheep present, eat one
-        x, y = self.pos
-        this_cell = model.grid.get_cell_list_contents([self.pos])
-        sheep = [obj for obj in this_cell if isinstance(obj, Sheep)]
-        if len(sheep) > 0:
-            sheep_to_eat = random.choice(sheep)
-            self.energy += model.wolf_gain_from_food
+        # # If there are sheep present, eat one
+        # x, y = self.pos
+        # this_cell = model.grid.get_cell_list_contents([self.pos])
+        # sheep = [obj for obj in this_cell if isinstance(obj, Sheep)]
+        # if len(sheep) > 0:
+        #     sheep_to_eat = random.choice(sheep)
+        #     self.energy += model.wolf_gain_from_food
+		#
+        #     # Kill the sheep
+        #     model.grid._remove_agent(self.pos, sheep_to_eat)
+        #     model.schedule.remove(sheep_to_eat)
 
-            # Kill the sheep
-            model.grid._remove_agent(self.pos, sheep_to_eat)
-            model.schedule.remove(sheep_to_eat)
-
-        # Death or reproduction
+        # Death
         if self.energy < 0:
             model.grid._remove_agent(self.pos, self)
             model.schedule.remove(self)
-        else:
-            if random.random() < model.wolf_reproduce:
-                # Create a new wolf cub
-                self.energy /= 2
-                cub = Wolf(self.grid, self.pos, self.moore, self.energy)
-                model.grid.place_agent(cub, cub.pos)
-                model.schedule.add(cub)
+        # else:
+        #     if random.random() < model.wolf_reproduce:
+        #         # Create a new wolf cub
+        #         self.energy /= 2
+        #         cub = Wolf(self.grid, self.pos, self.moore, self.energy)
+        #         model.grid.place_agent(cub, cub.pos)
+        #         model.schedule.add(cub)
+
 
 
 # class GrassPatch(Agent):
