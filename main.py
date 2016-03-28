@@ -13,8 +13,7 @@ Notes
 Try to match singular, plural, upper, & lower cases.
 e.g. Wolf(ves) -> Seller(s), Sheep -> Buyer and Buyers (unfortunate!)
 
-[Removed]
-Grass, reproduction,
+
 
 [Activation]
 1. Sellers post prices
