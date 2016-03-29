@@ -9,7 +9,12 @@ https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
 Notes
   [Activation]
   1. Buyers learn the prices, choose a seller, and buy one unit
-  2. Sellers post prices
+  2. Sellers check the cash balance and die or post prices
+
+  [Unique identifier]
+  Many examples use pos as identifier (a x-y position is unique on each grid).
+  Here, scalar bid & sid are used to make them independent of spaces because
+  some models may not use a spatial grid.
 '''
 
 import random
@@ -26,9 +31,9 @@ class Trade(Model):
   width = 20
   ini_buyers = 100
   ini_sellers = 50
-  verbose = False # Print-monitoring
+  # verbose = False # Print-monitoring
 
-  def __init__(self, height=20, width=20, ini_buyers=100, ini_sellers=50):
+  def __init__(self, height, width, ini_buyers, ini_sellers):
     self.height = height
     self.width = width
     self.ini_buyers = ini_buyers
@@ -52,42 +57,45 @@ class Trade(Model):
 
     '''
     Price
-      To let buyers access the prices, define as a class attribute.
-      a vector of size ini_sellers
+      To let buyers access the prices, define as a Trade class attribute
+      instead of individual seller's attribute.
       (arbitrary) range from 1 to 3
     '''
     self.prices = 2 * np.random.rand(ini_sellers) + 1
 
-    # Create buyers:
+    # Create buyers
     for i in range(self.ini_buyers):
       x = random.randrange(self.width)
       y = random.randrange(self.height)
-      '''
-      Income
-        income > max(price) to make every sellers affordable
-      '''
+      # income > max(price) to make every sellers affordable
       income = 10 * np.random.rand() + max(self.prices)
+      # i: a unique identifier
       buyer = Buyer(i, self.grid, (x, y), True, income)
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
     # Create sellers
+    self.sellers = [] # a list of sellers
     for i in range(self.ini_sellers):
       x = random.randrange(self.width)
       y = random.randrange(self.height)
       cash = 100 # initial cash balance
-      '''
-      Fixed costs
-        relative to ini_buyers, implying the required market share
-      '''
+      # relative to ini_buyers, implying the required market share
       costs = 0.1 * ini_buyers
       price = self.prices[i]
       w = False
       # The last seller is Wal-Mart
       if i == self.ini_sellers - 1:
         w = True
-      # i is used as a unique identifier
+      # i: a unique identifier
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
+      '''
+      To have instant access to seller attributes, create a list of seller
+      objects. If it turns out a waste of memory (esp. with a big simulation)
+      I guess we may loop the scheduler or the grid to access a specific
+      seller. But, then, it would be a waste of computation, I suppose...
+      '''
+      self.sellers.append(seller)
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
 
@@ -123,18 +131,24 @@ class Trade(Model):
 
 class Buyer(Agent):
 '''
-income: for wealth
+bid: buyer unique id
+income: wealth level (for now, just set high enough)
 '''
   def __init__(self, bid, grid, pos, moore, income):
-    self.bid = bid # buyer unique id
+    self.bid = bid
     self.grid = grid
     self.pos = pos
     self.moore = moore
     self.income = income
 
   def step(self, model):
-    # Write an optimization problem
-    # prices can be accessed thru model.prices with sid as their indices
+    '''
+    Write an optimization problem
+      model.match: the matching matrix (sellers on rows, buyers on columns)
+      model.prices: the price vector with sid as its indices
+      model.sellers[sid]: a seller object, containing attribute pos=[x][y]
+      to calculate the distance from her
+    '''
 
 
 
@@ -158,7 +172,8 @@ w: boolean for conventional producer (Wal-Mart), who is immortal.
   def step(self, model):
     # (if not w) Cash changes by sales - the fixed costs
     if w==False:
-      self.cash = # need to get the sales at the previous period
+      # Get sales summary from Buyers' steps
+      self.cash =
 
     # Insolvency
     if self.cash < 0:
@@ -167,7 +182,7 @@ w: boolean for conventional producer (Wal-Mart), who is immortal.
 
     # Post a new price
     else:
-      # For now, it is fixed
+      # For now, it is fixed and do nothing
       # model.prices[self.sid] =
 
 
