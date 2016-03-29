@@ -5,18 +5,11 @@ Based on WoflSheep model creted by Project Mesa.
 https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
 '''
 
-
 '''
 Notes
-
-[Name conversion]
-Try to match singular, plural, upper, & lower cases.
-e.g. Wolf(ves) -> Seller(s), Sheep -> Buyer and Buyers (unfortunate!)
-
-[Activation]
-1. Buyers learn the prices, choose a seller, and buy one unit
-2. Sellers post prices
-
+  [Activation]
+  1. Buyers learn the prices, choose a seller, and buy one unit
+  2. Sellers post prices
 '''
 
 import random
@@ -31,47 +24,18 @@ from mesa.datacollection import DataCollector
 class Trade(Model):
   height = 20
   width = 20
-
   ini_buyers = 100
   ini_sellers = 50
-
-  # sheep_reproduce = 0.04
-  # wolf_reproduce = 0.05
-  #
-  # wolf_gain_from_food = 20
-  #
-  # grass = False
-  # grass_regrowth_time = 30
-  # sheep_gain_from_food = 4
-
   verbose = False # Print-monitoring
 
   def __init__(self, height=20, width=20, ini_buyers=100, ini_sellers=50):
-    '''
-    Create a new LF model with the given parameters.
-
-    Args:
-      ini_buyers: Number of buyers to start with
-      ini_sellers: Number of seller to start with
-    '''
-
-    # Set parameters
     self.height = height
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
-    # self.sheep_reproduce = sheep_reproduce
-    # self.wolf_reproduce = wolf_reproduce
-    # self.wolf_gain_from_food = wolf_gain_from_food
-    # self.grass = grass
-    # self.grass_regrowth_time = grass_regrowth_time
-    # self.sheep_gain_from_food = sheep_gain_from_food
 
     self.schedule = RandomActivationByBreed(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
-    # self.datacollector = DataCollector(
-    #   {"Wolves": lambda m: m.schedule.get_breed_count(Wolf),
-    #   "Sheep": lambda m: m.schedule.get_breed_count(Sheep)})
     self.datacollector = DataCollector(
       {"Sellers": lambda m: m.schedule.get_breed_count(Seller),
       "Buyers": lambda m: m.schedule.get_breed_count(Buyer)})
@@ -103,7 +67,7 @@ class Trade(Model):
         income > max(price) to make every sellers affordable
       '''
       income = 10 * np.random.rand() + max(self.prices)
-      buyer = Buyer(self.grid, (x, y), True, income)
+      buyer = Buyer(i, self.grid, (x, y), True, income)
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
@@ -111,20 +75,25 @@ class Trade(Model):
     for i in range(self.ini_sellers):
       x = random.randrange(self.width)
       y = random.randrange(self.height)
-      # initial cash balance
-      cash = 100
+      cash = 100 # initial cash balance
       '''
       Fixed costs
         relative to ini_buyers, implying the required market share
       '''
       costs = 0.1 * ini_buyers
       price = self.prices[i]
-      seller = Seller(self.grid, (x, y), True, cash, costs, price)
+      w = False
+      # The last seller is Wal-Mart
+      if i == self.ini_sellers - 1:
+        w = True
+      # i is used as a unique identifier
+      seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
 
     self.running = True
 
+# Not yet worked on
   def step(self):
     self.schedule.step()
     self.datacollector.collect(self)
@@ -133,6 +102,7 @@ class Trade(Model):
         self.schedule.get_breed_count(Seller),
         self.schedule.get_breed_count(Buyer)])
 
+# Not yet worked on
   def run_model(self, step_count=200):
     if self.verbose:
       print('Initial number sellers: ',
@@ -155,45 +125,33 @@ class Buyer(Agent):
 '''
 income: for wealth
 '''
-
-  income = None # don't know how it is used...
-
-  def __init__(self, grid, pos, moore, income):
+  def __init__(self, bid, grid, pos, moore, income):
+    self.bid = bid # buyer unique id
     self.grid = grid
     self.pos = pos
     self.moore = moore
     self.income = income
 
   def step(self, model):
-    if model.grass:
-
-      # Reduce energy
-      self.energy -= 1
-
-      # If there is grass available, eat it
-      this_cell = model.grid.get_cell_list_contents([self.pos])
-      grass_patch = [obj for obj in this_cell
-               if isinstance(obj, GrassPatch)][0]
-      if grass_patch.fully_grown:
-        self.energy += model.sheep_gain_from_food
-        grass_patch.fully_grown = False
+    # Write an optimization problem
+    # prices can be accessed thru model.prices with sid as their indices
 
 
 
 class Seller(Agent):
 '''
-cash: for liquidity level. analogue of energy.
-w: boolean for conventional producer, who is immortal.
+sid: seller unique id
+cash: liquidity level. analogue of energy.
+costs: fixed costs, working as the threshold of breakeven
+w: boolean for conventional producer (Wal-Mart), who is immortal.
 '''
-
-  cash = None # don't know how it is used...
-
-  def __init__(self, grid, pos, moore, cash, costs, price, w=False):
+  def __init__(self, sid, grid, pos, moore, cash, costs, price, w):
+    self.sid = sid
     self.grid = grid
     self.pos = pos
     self.moore = moore
     self.cash = cash
-    self.costs = costs # fixed costs
+    self.costs = costs
     self.price = price
     self.w = w
 
@@ -210,10 +168,12 @@ w: boolean for conventional producer, who is immortal.
     # Post a new price
     else:
       # For now, it is fixed
-    #   self.price =
+      # model.prices[self.sid] =
 
 
 
+# Haven't been touched yet
+#
 class RandomActivationByBreed(RandomActivation):
   '''
   A scheduler which activates each type of agent once per step, in random
