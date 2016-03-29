@@ -69,6 +69,10 @@ class Trade(Model):
       y = random.randrange(self.height)
       # income > max(price) to make every sellers affordable
       income = 10 * np.random.rand() + max(self.prices)
+      '''
+      local_affinity:
+      '''
+      local_affinity
       # i: a unique identifier
       buyer = Buyer(i, self.grid, (x, y), True, income)
       self.grid.place_agent(buyer, (x, y))
@@ -133,8 +137,9 @@ class Buyer(Agent):
 '''
 bid: buyer unique id
 income: wealth level (for now, just set high enough)
+local_affinity:
 '''
-  def __init__(self, bid, grid, pos, moore, income):
+  def __init__(self, bid, grid, pos, moore, income, local_affinity):
     self.bid = bid
     self.grid = grid
     self.pos = pos
@@ -144,10 +149,11 @@ income: wealth level (for now, just set high enough)
   def step(self, model):
     '''
     Write an optimization problem
-      model.match: the matching matrix (sellers on rows, buyers on columns)
-      model.prices: the price vector with sid as its indices
-      model.sellers[sid]: a seller object, containing attribute pos=[x][y]
-      to calculate the distance from her
+
+    model.match: the matching matrix (sellers on rows, buyers on columns)
+    model.prices: the price vector with sid as its indices
+    model.sellers[sid]: a seller object, containing attribute pos=[x][y]
+    to calculate the distance from her
     '''
 
 
