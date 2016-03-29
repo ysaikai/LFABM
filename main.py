@@ -13,11 +13,9 @@ Notes
 Try to match singular, plural, upper, & lower cases.
 e.g. Wolf(ves) -> Seller(s), Sheep -> Buyer and Buyers (unfortunate!)
 
-
-
 [Activation]
-1. Sellers post prices
-2. Buyers learn the prices, choose one, and buy one unit
+1. Buyers learn the prices, choose a seller, and buy one unit
+2. Sellers post prices
 
 '''
 
@@ -48,8 +46,7 @@ class Trade(Model):
 
   verbose = False # Print-monitoring
 
-  def __init__(self, height=20, width=20,
-         ini_buyers=100, ini_sellers=50):
+  def __init__(self, height=20, width=20, ini_buyers=100, ini_sellers=50):
     '''
     Create a new LF model with the given parameters.
 
@@ -82,21 +79,31 @@ class Trade(Model):
 
     '''
     Generate a matching matrix
-
       (for now) just random 0 & 1
       Sellers are on rows. Buyers on columns.
       Wal-Mart has 1s for every buyers (correct?)
     '''
-    match = np.random.randint(2, size=(ini_sellers-1, ini_buyers))
-    match = np.append(match, [np.ones(ini_buyers,dtype=np.int)], axis=0)
+    self.match = np.random.randint(2, size=(ini_sellers-1, ini_buyers))
+    self.match = np.append(match, [np.ones(ini_buyers,dtype=np.int)], axis=0)
 
+    '''
+    Price
+      To let buyers access the prices, define as a class attribute.
+      a vector of size ini_sellers
+      (arbitrary) range from 1 to 3
+    '''
+    self.prices = 2 * np.random.rand(ini_sellers) + 1
 
     # Create buyers:
     for i in range(self.ini_buyers):
       x = random.randrange(self.width)
       y = random.randrange(self.height)
-      # energy = random.randrange(2 * self.sheep_gain_from_food)
-      buyer = Buyer(self.grid, (x, y), True, energy) # energy?
+      '''
+      Income
+        income > max(price) to make every sellers affordable
+      '''
+      income = 10 * np.random.rand() + max(self.prices)
+      buyer = Buyer(self.grid, (x, y), True, income)
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
@@ -104,8 +111,15 @@ class Trade(Model):
     for i in range(self.ini_sellers):
       x = random.randrange(self.width)
       y = random.randrange(self.height)
-      energy = random.randrange(2 * self.wolf_gain_from_food)
-      seller = Seller(self.grid, (x, y), True, energy)
+      # initial cash balance
+      cash = 100
+      '''
+      Fixed costs
+        relative to ini_buyers, implying the required market share
+      '''
+      costs = 0.1 * ini_buyers
+      price = self.prices[i]
+      seller = Seller(self.grid, (x, y), True, cash, costs, price)
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
 
