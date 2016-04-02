@@ -46,22 +46,22 @@ class Trade(Model):
       "Buyers": lambda m: m.schedule.get_breed_count(Buyer)})
 
 
-    '''
-    Generate a matching matrix
-      (for now) just random 0 & 1
-      Sellers are on rows. Buyers on columns.
-      Wal-Mart has 1s for every buyers (correct?)
-    '''
-    self.match = np.random.randint(2, size=(ini_sellers-1, ini_buyers))
-    self.match = np.append(match, [np.ones(ini_buyers,dtype=np.int)], axis=0)
+    # '''
+    # Generate a matching matrix
+    #   (for now) just random 0 & 1
+    #   Sellers are on rows. Buyers on columns.
+    #   Wal-Mart has 1s for every buyers (correct?)
+    # '''
+    # self.match = np.random.randint(2, size=(ini_sellers-1, ini_buyers))
+    # self.match = np.append(match, [np.ones(ini_buyers,dtype=np.int)], axis=0)
 
     '''
     Price
       To let buyers access the prices, define as a Trade class attribute
-      instead of individual seller's attribute.
-      (arbitrary) range from 1 to 3
+      instead of an individual seller's attribute.
+      (arbitrary) range from 0 to 2
     '''
-    self.prices = 2 * np.random.rand(ini_sellers) + 1
+    self.prices = 2 * np.random.rand(ini_sellers)
 
     # Create buyers
     for i in range(self.ini_buyers):
@@ -69,12 +69,16 @@ class Trade(Model):
       y = random.randrange(self.height)
       # income > max(price) to make every sellers affordable
       income = 10 * np.random.rand() + max(self.prices)
+      a = np.random.rand()
       '''
-      local_affinity:
+      Trust
+        a vector of trust levels for the sellers
+        (arbitrary) uniform[0,2]
       '''
-      local_affinity
+      trust = 2 * np.random.rand(ini_sellers)
+      b = 0.02 * np.random.rand()
       # i: a unique identifier
-      buyer = Buyer(i, self.grid, (x, y), True, income)
+      buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
@@ -136,10 +140,12 @@ class Trade(Model):
 class Buyer(Agent):
 '''
 bid: buyer unique id
+a: a coefficient on trust
+trust: a vector of trust levels for the producers
 income: wealth level (for now, just set high enough)
-local_affinity:
+b: a coefficient on distance, i.e. local_affinity
 '''
-  def __init__(self, bid, grid, pos, moore, income, local_affinity):
+  def __init__(self, bid, grid, pos, moore, a, trust, income, b):
     self.bid = bid
     self.grid = grid
     self.pos = pos
@@ -149,6 +155,8 @@ local_affinity:
   def step(self, model):
     '''
     Write an optimization problem
+
+    max{a*trust - b*d - p} over all the sellers
 
     model.match: the matching matrix (sellers on rows, buyers on columns)
     model.prices: the price vector with sid as its indices
