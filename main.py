@@ -7,16 +7,23 @@ https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
 
 '''
 Notes
-  [Activation]
-  1. Buyers learn the prices, choose a seller, and buy one unit
-  2. Sellers check the cash balance and die or post prices
 
-  [Unique identifier]
-  Many examples use pos as identifier (a x-y position is unique on each grid).
-  Here, scalar bid & sid are used to make them independent of spaces because
-  some models may not use a spatial grid.
+[Activation]
+1. Buyers learn the prices, choose a seller, and buy one unit
+2. Sellers check the cash balance and die or post prices
+
+[Unique identifier]
+Many examples use pos as identifier (x-y position is unique on each grid).
+Here, scalar bid & sid are created to make them independent of spaces
+because it's just nuatural to use a sequence of integers Plus, some models
+may not use a spatial grid.
+
+[Initial parameters]
+They are scattered across this script. It may be cleaner to specify
+all the initial parameter values in an external text file.
 '''
 
+import numpy as np
 import random
 from collections import defaultdict
 
@@ -63,39 +70,46 @@ class Trade(Model):
     '''
     self.prices = 2 * np.random.rand(ini_sellers)
 
-    # Create buyers
+    '''Create buyers'''
     for i in range(self.ini_buyers):
+      '''
+      What happens if two pos coincide? Since it manages to run, I guess,
+      the grid module doesn't rule out such a senario. For now, leave it
+      as it is.
+      '''
       x = random.randrange(self.width)
       y = random.randrange(self.height)
-      # income > max(price) to make every sellers affordable
+
+      '''income > max(price) to make every sellers affordable'''
       income = 10 * np.random.rand() + max(self.prices)
-      a = np.random.rand()
+      a = np.random.rand() # a coefficient on trust
       '''
       Trust
-        a vector of trust levels for the sellers
+        a vector of trust levels in the sellers
         (arbitrary) uniform[0,2]
+        Wal-Mart has 0
       '''
-      trust = 2 * np.random.rand(ini_sellers)
-      b = 0.02 * np.random.rand()
-      # i: a unique identifier
+      trust = 2 * np.random.rand(ini_sellers - 1)
+      trust = np.append(trust,0) # 0 trust in Wal-Mart
+      b = 0.02 * np.random.rand() # a coefficient on distance
+
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
-    # Create sellers
-    self.sellers = [] # a list of sellers
+    '''Create sellers'''
+    self.sellers = [] # a list of seller objects
     for i in range(self.ini_sellers):
+      # the same concern of coincident positions as above
       x = random.randrange(self.width)
       y = random.randrange(self.height)
+
       cash = 100 # initial cash balance
       # relative to ini_buyers, implying the required market share
       costs = 0.1 * ini_buyers
       price = self.prices[i]
-      w = False
-      # The last seller is Wal-Mart
-      if i == self.ini_sellers - 1:
-        w = True
-      # i: a unique identifier
+      if i == self.ini_sellers - 1: w = True # the last is Wal-Mart
+
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
       '''
       To have instant access to seller attributes, create a list of seller
@@ -141,7 +155,7 @@ class Buyer(Agent):
 '''
 bid: buyer unique id
 a: a coefficient on trust
-trust: a vector of trust levels for the producers
+trust: a vector of trust levels in the producers
 income: wealth level (for now, just set high enough)
 b: a coefficient on distance, i.e. local_affinity
 '''
@@ -150,20 +164,30 @@ b: a coefficient on distance, i.e. local_affinity
     self.grid = grid
     self.pos = pos
     self.moore = moore
+    self.a = a
+    self.trust = trust
     self.income = income
+    self.b = b
 
-  def step(self, model):
+  def util(self, i, model):
     '''
-    Write an optimization problem
-
-    max{a*trust - b*d - p} over all the sellers
-
-    model.match: the matching matrix (sellers on rows, buyers on columns)
+    utility = a*trust - b*d - p
     model.prices: the price vector with sid as its indices
     model.sellers[sid]: a seller object, containing attribute pos=[x][y]
     to calculate the distance from her
     '''
+    a = self.a
+    trust = self.trust[i]
+    pos = model.sellers[i].pos
+    d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
+    b = self.b
+    p = model.prices[i]
 
+    return = a*trust - b*d - p
+
+  def step(self):
+    '''Buyer's optimization problem is to choose the best buyer'''
+    choice = max(range(ini_sellers), key=self.util)
 
 
 class Seller(Agent):
@@ -173,7 +197,7 @@ cash: liquidity level. analogue of energy.
 costs: fixed costs, working as the threshold of breakeven
 w: boolean for conventional producer (Wal-Mart), who is immortal.
 '''
-  def __init__(self, sid, grid, pos, moore, cash, costs, price, w):
+  def __init__(self, sid, grid, pos, moore, cash, costs, price, w=false):
     self.sid = sid
     self.grid = grid
     self.pos = pos
@@ -186,7 +210,10 @@ w: boolean for conventional producer (Wal-Mart), who is immortal.
   def step(self, model):
     # (if not w) Cash changes by sales - the fixed costs
     if w==False:
-      # Get sales summary from Buyers' steps
+      '''
+      The cash balance changes by #sales - costs (#sales = #buyers)
+      How do we get a list of immediate buyers' choices?
+      '''
       self.cash =
 
     # Insolvency
