@@ -1,7 +1,8 @@
-from WolfSheep import WolfSheepPredation
-from WolfSheepVisualization import WolfSheepVisualization
+from main import Trade
+from visualization import LFABMVisualization
 
 if __name__ == "__main__":
-    model = WolfSheepPredation(grass=True)
+    # model = Trade(grass=True)
+    model = Trade()
     model.run_model()
-    # viz = WolfSheepVisualization(model)
+    # viz = visualization(model)

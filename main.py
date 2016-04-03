@@ -30,6 +30,7 @@ from collections import defaultdict
 from mesa import Model, Agent
 from mesa.space import MultiGrid
 from mesa.time import RandomActivation
+# from mesa.time import BaseScheduler
 from mesa.datacollection import DataCollector
 
 
@@ -38,20 +39,20 @@ class Trade(Model):
   width = 20
   ini_buyers = 100
   ini_sellers = 50
-  # verbose = False # Print-monitoring
+  verbose = False # Print-monitoring
 
-  def __init__(self, height, width, ini_buyers, ini_sellers):
+  def __init__(self, height=20, width=20, ini_buyers=100, ini_sellers=50):
     self.height = height
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
 
     self.schedule = RandomActivationByBreed(self)
+    # self.schedule = BaseScheduler(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
     self.datacollector = DataCollector(
-      {"Sellers": lambda m: m.schedule.get_breed_count(Seller),
-      "Buyers": lambda m: m.schedule.get_breed_count(Buyer)})
-
+      {"Sellers": lambda m: m.schedule.get_type_count(Seller),
+      "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
 
     # '''
     # Generate a matching matrix
@@ -108,6 +109,7 @@ class Trade(Model):
       # relative to ini_buyers, implying the required market share
       costs = 0.1 * ini_buyers
       price = self.prices[i]
+      w = False
       if i == self.ini_sellers - 1: w = True # the last is Wal-Mart
 
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
@@ -123,22 +125,24 @@ class Trade(Model):
 
     self.running = True
 
-# Not yet worked on
   def step(self):
+    for obj in self.sellers:
+      obj.sales = 0 # initialize the adjacent sales
+
     self.schedule.step()
     self.datacollector.collect(self)
     if self.verbose:
       print([self.schedule.time,
-        self.schedule.get_breed_count(Seller),
-        self.schedule.get_breed_count(Buyer)])
+        self.schedule.get_type_count(Seller),
+        self.schedule.get_type_count(Buyer)])
 
 # Not yet worked on
   def run_model(self, step_count=200):
     if self.verbose:
       print('Initial number sellers: ',
-        self.schedule.get_breed_count(Seller))
+        self.schedule.get_type_count(Seller))
       print('Initial number buyers: ',
-        self.schedule.get_breed_count(Buyer))
+        self.schedule.get_type_count(Buyer))
 
     for i in range(step_count):
       self.step()
@@ -146,19 +150,19 @@ class Trade(Model):
     if self.verbose:
       print('')
       print('Final number sellers: ',
-        self.schedule.get_breed_count(Seller))
+        self.schedule.get_type_count(Seller))
       print('Final number buyers: ',
-        self.schedule.get_breed_count(Buyer))
+        self.schedule.get_type_count(Buyer))
 
 
 class Buyer(Agent):
-'''
-bid: buyer unique id
-a: a coefficient on trust
-trust: a vector of trust levels in the producers
-income: wealth level (for now, just set high enough)
-b: a coefficient on distance, i.e. local_affinity
-'''
+  '''
+  bid: buyer unique id
+  a: a coefficient on trust
+  trust: a vector of trust levels in the producers
+  income: wealth level (for now, just set high enough)
+  b: a coefficient on distance, i.e. local_affinity
+  '''
   def __init__(self, bid, grid, pos, moore, a, trust, income, b):
     self.bid = bid
     self.grid = grid
@@ -169,35 +173,37 @@ b: a coefficient on distance, i.e. local_affinity
     self.income = income
     self.b = b
 
-  def util(self, i, model):
-    '''
-    utility = a*trust - b*d - p
-    model.prices: the price vector with sid as its indices
-    model.sellers[sid]: a seller object, containing attribute pos=[x][y]
-    to calculate the distance from her
-    '''
-    a = self.a
-    trust = self.trust[i]
-    pos = model.sellers[i].pos
-    d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
-    b = self.b
-    p = model.prices[i]
-
-    return = a*trust - b*d - p
-
-  def step(self):
+  def step(self, model):
     '''Buyer's optimization problem is to choose the best buyer'''
-    choice = max(range(ini_sellers), key=self.util)
+    def util(i):
+      '''
+      utility = a*trust - b*d - p
+      model.prices: the price vector with sid as its indices
+      model.sellers[sid]: a seller object, containing attribute pos=[x][y]
+      to calculate the distance from her
+      '''
+      a = self.a
+      trust = self.trust[i]
+      pos = model.sellers[i].pos
+      d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
+      b = self.b
+      p = model.prices[i]
+
+      return a*trust - b*d - p
+
+    # choice = max(range(model.ini_sellers), key=self.util)
+    choice = max(range(model.ini_sellers), key=util)
+    model.sellers[choice].sales += 1
 
 
 class Seller(Agent):
-'''
-sid: seller unique id
-cash: liquidity level. analogue of energy.
-costs: fixed costs, working as the threshold of breakeven
-w: boolean for conventional producer (Wal-Mart), who is immortal.
-'''
-  def __init__(self, sid, grid, pos, moore, cash, costs, price, w=false):
+  '''
+  sid: seller unique id
+  cash: liquidity level
+  costs: fixed costs, working as the threshold of breakeven
+  w: boolean for Wal-Mart
+  '''
+  def __init__(self, sid, grid, pos, moore, cash, costs, price, w=False):
     self.sid = sid
     self.grid = grid
     self.pos = pos
@@ -206,15 +212,13 @@ w: boolean for conventional producer (Wal-Mart), who is immortal.
     self.costs = costs
     self.price = price
     self.w = w
+    self.sales = 0 # the number of costomers at the adjacent period
 
   def step(self, model):
-    # (if not w) Cash changes by sales - the fixed costs
-    if w==False:
-      '''
-      The cash balance changes by #sales - costs (#sales = #buyers)
-      How do we get a list of immediate buyers' choices?
-      '''
-      self.cash =
+    # Wal-Mart is immortal with unchanged cash balances
+    if self.w==False:
+      '''The cash balance changes by #sales - costs (#sales = #buyers)'''
+      self.cash += self.sales - self.costs
 
     # Insolvency
     if self.cash < 0:
@@ -224,8 +228,7 @@ w: boolean for conventional producer (Wal-Mart), who is immortal.
     # Post a new price
     else:
       # For now, it is fixed and do nothing
-      # model.prices[self.sid] =
-
+      model.prices[self.sid] = model.prices[self.sid]
 
 
 # Haven't been touched yet
@@ -240,11 +243,11 @@ class RandomActivationByBreed(RandomActivation):
 
   Assumes that all agents have a step(model) method.
   '''
-  agents_by_breed = defaultdict(list)
+  agent_types = defaultdict(list)
 
   def __init__(self, model):
     super().__init__(model)
-    self.agents_by_breed = defaultdict(list)
+    self.agent_types = defaultdict(list)
 
   def add(self, agent):
     '''
@@ -256,7 +259,7 @@ class RandomActivationByBreed(RandomActivation):
 
     self.agents.append(agent)
     agent_class = type(agent)
-    self.agents_by_breed[agent_class].append(agent)
+    self.agent_types[agent_class].append(agent)
 
   def remove(self, agent):
     '''
@@ -267,8 +270,8 @@ class RandomActivationByBreed(RandomActivation):
       self.agents.remove(agent)
 
     agent_class = type(agent)
-    while agent in self.agents_by_breed[agent_class]:
-      self.agents_by_breed[agent_class].remove(agent)
+    while agent in self.agent_types[agent_class]:
+      self.agent_types[agent_class].remove(agent)
 
   def step(self, by_breed=True):
     '''
@@ -279,7 +282,7 @@ class RandomActivationByBreed(RandomActivation):
             the next one.
     '''
     if by_breed:
-      for agent_class in  self.agents_by_breed:
+      for agent_class in  self.agent_types:
         self.step_breed(agent_class)
       self.steps += 1
       self.time += 1
@@ -293,13 +296,13 @@ class RandomActivationByBreed(RandomActivation):
     Args:
       breed: Class object of the breed to run.
     '''
-    agents = self.agents_by_breed[breed]
+    agents = self.agent_types[breed]
     random.shuffle(agents)
     for agent in agents:
       agent.step(self.model)
 
-  def get_breed_count(self, breed_class):
+  def get_type_count(self, a_type):
     '''
     Returns the current number of agents of certain breed in the queue.
     '''
-    return len(self.agents_by_breed[breed_class])
+    return len(self.agent_types[a_type])

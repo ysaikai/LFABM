@@ -1,12 +1,8 @@
-'''
-Visualization for the Wolf-Sheep Predation
-'''
-
-from WolfSheep import Wolf, Sheep
+from main import Buyer, Seller
 from mesa.visualization.TextVisualization import TextVisualization, TextGrid
 
 
-class WolfSheepVisualization(TextVisualization):
+class LFABMVisualization(TextVisualization):
     '''
     ASCII visualization of the WolfSheepPredation model.
 
