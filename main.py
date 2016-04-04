@@ -41,7 +41,7 @@ class Trade(Model):
   ini_sellers = 50
   verbose = False # Print-monitoring
 
-  def __init__(self, height=20, width=20, ini_buyers=100, ini_sellers=50):
+  def __init__(self, height=20, width=20, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
     self.height = height
     self.width = width
     self.ini_buyers = ini_buyers
@@ -174,7 +174,7 @@ class Buyer(Agent):
     self.b = b
 
   def step(self, model):
-    '''Buyer's optimization problem is to choose the best buyer'''
+    '''Buyer's optimization problem is to choose the best seller'''
     def util(i):
       '''
       utility = a*trust - b*d - p
@@ -191,7 +191,6 @@ class Buyer(Agent):
 
       return a*trust - b*d - p
 
-    # choice = max(range(model.ini_sellers), key=self.util)
     choice = max(range(model.ini_sellers), key=util)
     model.sellers[choice].sales += 1
 
