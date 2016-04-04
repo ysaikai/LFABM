@@ -1,7 +1,7 @@
 '''
 An agent-based model of local food systems
 
-Based on WoflSheep model creted by Project Mesa.
+Based on WoflSheep model created by Project Mesa.
 https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
 '''
 
@@ -19,7 +19,7 @@ because it's just nuatural to use a sequence of integers Plus, some models
 may not use a spatial grid.
 
 [Initial parameters]
-They are scattered across this script. It may be cleaner to specify
+They are scattered across the scripts. It may be cleaner to specify
 all the initial parameter values in an external text file.
 '''
 
@@ -41,7 +41,7 @@ class Trade(Model):
   ini_sellers = 50
   verbose = False # Print-monitoring
 
-  def __init__(self, height=20, width=20, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
+  def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
     self.height = height
     self.width = width
     self.ini_buyers = ini_buyers
@@ -115,9 +115,9 @@ class Trade(Model):
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
       '''
       To have instant access to seller attributes, create a list of seller
-      objects. If it turns out a waste of memory (esp. with a big simulation)
+      objects. If it turns out a waste of memory (esp. in a big simulation)
       I guess we may loop the scheduler or the grid to access a specific
-      seller. But, then, it would be a waste of computation, I suppose...
+      seller. But, then, it would be a waste of computation...
       '''
       self.sellers.append(seller)
       self.grid.place_agent(seller, (x, y))
@@ -211,7 +211,7 @@ class Seller(Agent):
     self.costs = costs
     self.price = price
     self.w = w
-    self.sales = 0 # the number of costomers at the adjacent period
+    self.sales = 0 # the number of customers at the adjacent period
 
   def step(self, model):
     # Wal-Mart is immortal with unchanged cash balances
