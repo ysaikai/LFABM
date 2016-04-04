@@ -25,13 +25,13 @@ def LFABM_portrayal(agent):
       portrayal["Color"] = color_WM
     else:
       if agent.price < 0.5:
-          portrayal["Color"] = "#b3ffb3"   # Light green for low price
+        portrayal["Color"] = "#b3ffb3"   # Light green for low price
       elif agent.price < 1:
-          portrayal["Color"] = "#33ff33"
+        portrayal["Color"] = "#33ff33"
       elif agent.price < 1.5:
-          portrayal["Color"] = "#00cc00"
+        portrayal["Color"] = "#00cc00"
       else:
-          portrayal["Color"] = "#004d00"  # Dark green for highe price
+        portrayal["Color"] = "#004d00"  # Dark green for highe price
       #portrayal["Color"] = color_seller
     portrayal["r"] = 0.5
     portrayal["Layer"] = 2
