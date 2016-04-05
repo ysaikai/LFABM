@@ -20,10 +20,8 @@ def LFABM_portrayal(agent):
     portrayal["r"] = 0.8
     portrayal["Layer"] = 1
 
-  '''
-  The following shows only the static color reflecting the initial prices.
-  If we want to dynamically change the colors, need to go thru the scheduler.
-  '''
+  # The following shows only the static color reflecting the initial prices.
+  # If we want to dynamically change the colors, need to go thru the scheduler.
   elif type(agent) is Seller:
     if agent.w:
       portrayal["Color"] = color_WM
