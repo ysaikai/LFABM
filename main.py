@@ -15,7 +15,7 @@ Notes
 [Unique identifier]
 Many examples use pos as identifier (x-y position is unique on each grid).
 Here, scalar bid & sid are created to make them independent of spaces
-because it's just nuatural to use a sequence of integers Plus, some models
+because it's just natural to use a sequence of integers. Plus, some models
 may not use a spatial grid.
 
 [Initial parameters]
@@ -30,7 +30,6 @@ from collections import defaultdict
 from mesa import Model, Agent
 from mesa.space import MultiGrid
 from mesa.time import RandomActivation
-# from mesa.time import BaseScheduler
 from mesa.datacollection import DataCollector
 
 
@@ -48,11 +47,12 @@ class Trade(Model):
     self.ini_sellers = ini_sellers
 
     self.schedule = RandomActivationByBreed(self)
-    # self.schedule = BaseScheduler(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
     self.datacollector = DataCollector(
       {"Sellers": lambda m: m.schedule.get_type_count(Seller),
       "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
+
+    self.cnt = 0 # a counter for debugging
 
     # '''
     # Generate a matching matrix
@@ -70,6 +70,12 @@ class Trade(Model):
       (arbitrary) range from 0 to 2
     '''
     self.prices = 2 * np.random.rand(ini_sellers)
+
+    '''
+    Scoreboard
+      Each tally of sales, used as a popularity ranking
+    '''
+    self.sb = np.zeros(self.ini_sellers, dtype=np.int)
 
     '''Create buyers'''
     for i in range(self.ini_buyers):
@@ -99,7 +105,7 @@ class Trade(Model):
       self.schedule.add(buyer)
 
     '''Create sellers'''
-    self.sellers = [] # a list of seller objects
+    self.sellers = {} # a list of seller objects
     for i in range(self.ini_sellers):
       # the same concern of coincident positions as above
       x = random.randrange(self.width)
@@ -119,14 +125,18 @@ class Trade(Model):
       I guess we may loop the scheduler or the grid to access a specific
       seller. But, then, it would be a waste of computation...
       '''
-      self.sellers.append(seller)
+      self.sellers[i] = seller
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
 
     self.running = True
 
   def step(self):
-    for obj in self.sellers:
+    # Debugging
+    # self.cnt += 1
+    # print("Step: ", self.cnt)
+
+    for key, obj in self.sellers.items():
       obj.sales = 0 # initialize the adjacent sales
 
     self.schedule.step()
@@ -174,6 +184,11 @@ class Buyer(Agent):
     self.b = b
 
   def step(self, model):
+    # '''Update the trust'''
+    # sb = model.sb
+    # # multiply each trust by (1 + normalized score)
+    # self.trust = [self.trust[i]*(1 + item/sum(sb)) for i,item in enumerate(sb)]
+
     '''Buyer's optimization problem is to choose the best seller'''
     def util(i):
       '''
@@ -191,8 +206,9 @@ class Buyer(Agent):
 
       return a*trust - b*d - p
 
-    choice = max(range(model.ini_sellers), key=util)
+    choice = max([sid for sid in model.sellers], key=util)
     model.sellers[choice].sales += 1
+    model.sb[choice] += 1 # update the scoreboard
 
 
 class Seller(Agent):
@@ -214,16 +230,20 @@ class Seller(Agent):
     self.sales = 0 # the number of customers at the adjacent period
 
   def step(self, model):
-    # Wal-Mart is immortal with unchanged cash balances
-    if self.w==False:
-      '''The cash balance changes by #sales - costs (#sales = #buyers)'''
-      self.cash += self.sales - self.costs
+    '''The cash balance changes by #sales - costs (#sales = #buyers)'''
+    # print(self.sales)
+    self.cash += self.sales - self.costs
 
-    # Insolvency
-    if self.cash < 0:
+    # Debugging
+    # print("Seller: ", self.sid, " with cash ", self.cash)
+
+    # Insolvency (Wal-Mart is immortal)
+    if (self.w == False and self.cash < 0):
+      # print("sid to be removed: ", self.sid)
       model.grid._remove_agent(self.pos, self)
       model.schedule.remove(self)
-
+      del model.sellers[self.sid]
+      # model.sellers.remove(self)
     # Post a new price
     else:
       # For now, it is fixed and do nothing
@@ -281,7 +301,7 @@ class RandomActivationByBreed(RandomActivation):
             the next one.
     '''
     if by_breed:
-      for agent_class in  self.agent_types:
+      for agent_class in self.agent_types:
         self.step_breed(agent_class)
       self.steps += 1
       self.time += 1

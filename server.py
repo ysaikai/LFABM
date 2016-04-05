@@ -13,13 +13,17 @@ def LFABM_portrayal(agent):
   portrayal = {"Shape": "circle", "Filled": "true"}
   '''
   The higher layer is placed on top of the lower. So, the lower should have
-  a smaller portrayal["r"] (the size of shape) so that it can be seen.
+  a bigger portrayal["r"] (the size of shape) so that it can be seen.
   '''
   if type(agent) is Buyer:
     portrayal["Color"] = color_buyer
     portrayal["r"] = 0.8
     portrayal["Layer"] = 1
 
+  '''
+  The following shows only the static color reflecting the initial prices.
+  If we want to dynamically change the colors, need to go thru the scheduler.
+  '''
   elif type(agent) is Seller:
     if agent.w:
       portrayal["Color"] = color_WM
