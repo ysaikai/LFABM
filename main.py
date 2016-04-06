@@ -46,7 +46,7 @@ class Trade(Model):
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
 
-    self.schedule = RandomActivationByBreed(self)
+    self.schedule = RandomActivationByType(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
     self.datacollector = DataCollector(
       {"Sellers": lambda m: m.schedule.get_type_count(Seller),
@@ -68,8 +68,10 @@ class Trade(Model):
       To let buyers access the prices, define as a Trade class attribute
       instead of an individual seller's attribute.
       (arbitrary) range from 0 to 2
+      Wal-Mart has the lowest price, 90% of the local lowest
     '''
-    self.prices = 2 * np.random.rand(ini_sellers)
+    self.prices = 2 * np.random.rand(ini_sellers - 1)
+    self.prices = np.append(self.prices, min(self.prices)*0.9)
 
     '''
     Scoreboard
@@ -97,7 +99,7 @@ class Trade(Model):
         Wal-Mart has 0
       '''
       trust = 2 * np.random.rand(ini_sellers - 1)
-      trust = np.append(trust,0) # 0 trust in Wal-Mart
+      trust = np.append(trust, 0) # 0 trust in Wal-Mart
       b = 0.02 * np.random.rand() # a coefficient on distance
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
@@ -105,18 +107,19 @@ class Trade(Model):
       self.schedule.add(buyer)
 
     '''Create sellers'''
-    self.sellers = {} # a list of seller objects
+    self.sellers = {} # a dictionary of seller instances
     for i in range(self.ini_sellers):
       # the same concern of coincident positions as above
       x = random.randrange(self.width)
       y = random.randrange(self.height)
 
-      cash = 100 # initial cash balance
+      cash = int(100) # initial cash balance
       # relative to ini_buyers, implying the required market share
       costs = 0.1 * ini_buyers
       price = self.prices[i]
       w = False
-      if i == self.ini_sellers - 1: w = True # the last is Wal-Mart
+      if i == self.ini_sellers - 1:
+        w = True # the last is Wal-Mart
 
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
       '''
@@ -125,19 +128,16 @@ class Trade(Model):
       I guess we may loop the scheduler or the grid to access a specific
       seller. But, then, it would be a waste of computation...
       '''
-      self.sellers[i] = seller
+      self.sellers[i] = seller # a dictionary key is an integer
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
 
     self.running = True
 
   def step(self):
-    # Debugging
-    # self.cnt += 1
-    # print("Step: ", self.cnt)
-
-    for key, obj in self.sellers.items():
-      obj.sales = 0 # initialize the adjacent sales
+    # initialize the adjacent sales
+    for obj in self.sellers.values():
+      obj.sales = int(0)
 
     self.schedule.step()
     self.datacollector.collect(self)
@@ -145,6 +145,13 @@ class Trade(Model):
       print([self.schedule.time,
         self.schedule.get_type_count(Seller),
         self.schedule.get_type_count(Buyer)])
+
+    # Debugging
+    # self.cnt += 1
+    # print("\nStep: ", self.cnt)
+    # for obj in self.sellers.values():
+    #   print("sid:", obj.sid, ", Sales:", obj.sales, ", Cash:", obj.cash)
+
 
 # Not yet worked on
   def run_model(self, step_count=200):
@@ -227,15 +234,12 @@ class Seller(Agent):
     self.costs = costs
     self.price = price
     self.w = w
-    self.sales = 0 # the number of customers at the adjacent period
+    self.sales = int(0) # the number of customers at the adjacent period
 
   def step(self, model):
     '''The cash balance changes by #sales - costs (#sales = #buyers)'''
     # print(self.sales)
-    self.cash += self.sales - self.costs
-
-    # Debugging
-    # print("Seller: ", self.sid, " with cash ", self.cash)
+    self.cash += int(self.sales - self.costs)
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
@@ -252,17 +256,15 @@ class Seller(Agent):
 
 # Haven't been touched yet
 #
-class RandomActivationByBreed(RandomActivation):
+class RandomActivationByType(RandomActivation):
   '''
-  A scheduler which activates each type of agent once per step, in random
-  order, with the order reshuffled every step.
-
-  This is equivalent to the NetLogo 'ask breed...' and is generally the
-  default behavior for an ABM.
+  Activate every agent once per step. The order is reshuffled at each step.
+  by_type: If True, activate all the agents of a certain type first in random
+  order, and then do the same for the next type.
 
   Assumes that all agents have a step(model) method.
   '''
-  agent_types = defaultdict(list)
+  agent_types = defaultdict(list) # "Buyer" or "Seller"
 
   def __init__(self, model):
     super().__init__(model)
@@ -270,10 +272,16 @@ class RandomActivationByBreed(RandomActivation):
 
   def add(self, agent):
     '''
-    Add an Agent object to the schedule
-
-    Args:
-      agent: An Agent to be added to the schedule.
+    Add an agent to the schedule
+      It seems that self.agents are NOT a list of the raw agent instances,
+      which are passed to, i.e. each list element semms to be processed
+      into a dictionary or the like (but, not sure yet).
+      Again, this is a list, whose indices are unrelated with unique id.
+      This is why we retain a separate dictionary of seller instances,
+      whose keys correspond to their unique id (sid).
+      self.agent_types[] seems similar, a list of the certain type,
+      while self.agents are a list of all the agents. i.e. self.agent_types[]
+      has a hierarchy.
     '''
 
     self.agents.append(agent)
@@ -284,7 +292,6 @@ class RandomActivationByBreed(RandomActivation):
     '''
     Remove all instances of a given agent from the schedule.
     '''
-
     while agent in self.agents:
       self.agents.remove(agent)
 
@@ -292,36 +299,32 @@ class RandomActivationByBreed(RandomActivation):
     while agent in self.agent_types[agent_class]:
       self.agent_types[agent_class].remove(agent)
 
-  def step(self, by_breed=True):
+  def step(self, by_type=True):
     '''
-    Executes the step of each agent breed, one at a time, in random order.
-
-    Args:
-      by_breed: If True, run all agents of a single breed before running
-            the next one.
+    Executes the step of each agent, one at a time, in random order.
     '''
-    if by_breed:
+    if by_type:
       for agent_class in self.agent_types:
-        self.step_breed(agent_class)
+        self.step_type(agent_class)
       self.steps += 1
       self.time += 1
     else:
       super().step()
 
-  def step_breed(self, breed):
+  def step_type(self, type):
     '''
-    Shuffle order and run all agents of a given breed.
+    Shuffle order and run all agents of a given type.
 
     Args:
-      breed: Class object of the breed to run.
+      type: Class object of the type to run.
     '''
-    agents = self.agent_types[breed]
+    agents = self.agent_types[type]
     random.shuffle(agents)
     for agent in agents:
       agent.step(self.model)
 
   def get_type_count(self, a_type):
     '''
-    Returns the current number of agents of certain breed in the queue.
+    Returns the current number of agents of certain type in the queue.
     '''
     return len(self.agent_types[a_type])
