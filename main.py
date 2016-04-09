@@ -95,12 +95,12 @@ class Trade(Model):
       '''income > max(price) to make every sellers affordable'''
       income = 10 * np.random.rand() + max(self.prices)
       # a = np.random.rand() # a coefficient on trust
-      a = 1 # (for now) set = 2
+      a = 1 # (for now) set = 1
       '''
       Trust
         A vector of trust levels in the sellers (1s and 0)
         Trust encapsulates all the 'quality' information about each seller,
-        which helps a buyer make decision. e.g. goods & service quality and
+        which helps a buyer make a decision. e.g. goods & service quality and
         character.
       '''
       # trust = 2 * np.random.rand(ini_sellers - 1)
