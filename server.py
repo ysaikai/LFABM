@@ -41,10 +41,12 @@ def LFABM_portrayal(agent):
   return portrayal
 
 canvas_element = CanvasGrid(LFABM_portrayal, 20, 20, 500, 500)
+# chart_element = ChartModule([
+#   {"Label": "Sellers", "Color": color_seller},
+#   {"Label": "Wal-Mart", "Color": color_WM},
+#   {"Label": "Buyers", "Color": color_buyer}])
 chart_element = ChartModule([
-  {"Label": "Sellers", "Color": color_seller},
-  {"Label": "Wal-Mart", "Color": color_WM},
-  {"Label": "Buyers", "Color": color_buyer}])
+  {"Label": "Sellers", "Color": color_seller}])
 
 server = ModularServer(Trade, [canvas_element, chart_element], modelname)
 server.launch()
