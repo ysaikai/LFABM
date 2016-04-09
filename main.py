@@ -34,6 +34,9 @@ from mesa.datacollection import DataCollector
 
 
 class Trade(Model):
+  '''
+  Parameters
+  '''
   height = 20
   width = 20
   ini_buyers = 100
@@ -91,14 +94,17 @@ class Trade(Model):
 
       '''income > max(price) to make every sellers affordable'''
       income = 10 * np.random.rand() + max(self.prices)
-      a = np.random.rand() # a coefficient on trust
+      # a = np.random.rand() # a coefficient on trust
+      a = 1 # (for now) set = 2
       '''
       Trust
-        a vector of trust levels in the sellers
-        (arbitrary) uniform[0,2]
-        Wal-Mart has 0
+        A vector of trust levels in the sellers (1s and 0)
+        Trust encapsulates all the 'quality' information about each seller,
+        which helps a buyer make decision. e.g. goods & service quality and
+        character.
       '''
-      trust = 2 * np.random.rand(ini_sellers - 1)
+      # trust = 2 * np.random.rand(ini_sellers - 1)
+      trust = np.ones(ini_sellers - 1)
       trust = np.append(trust, 0) # 0 trust in Wal-Mart
       b = 0.02 * np.random.rand() # a coefficient on distance
 
@@ -133,6 +139,8 @@ class Trade(Model):
       self.schedule.add(seller)
 
     self.running = True
+    # Debugging
+    self.max_steps = 100
 
   def step(self):
     # initialize the adjacent sales
@@ -147,10 +155,10 @@ class Trade(Model):
         self.schedule.get_type_count(Buyer)])
 
     # Debugging
-    # self.cnt += 1
-    # print("\nStep: ", self.cnt)
-    # for obj in self.sellers.values():
-    #   print("sid:", obj.sid, ", Sales:", obj.sales, ", Cash:", obj.cash)
+    self.cnt += 1
+    print("\nStep: ", self.cnt)
+    for obj in self.sellers.values():
+      print("sid:", obj.sid, ", Sales:", obj.sales, ", Cash:", obj.cash)
 
 
 # Not yet worked on
@@ -191,18 +199,15 @@ class Buyer(Agent):
     self.b = b
 
   def step(self, model):
-    # '''Update the trust'''
-    # sb = model.sb
-    # # multiply each trust by (1 + normalized score)
-    # self.trust = [self.trust[i]*(1 + item/sum(sb)) for i,item in enumerate(sb)]
-
-    '''Buyer's optimization problem is to choose the best seller'''
     def util(i):
       '''
       utility = a*trust - b*d - p
       model.prices: the price vector with sid as its indices
       model.sellers[sid]: a seller object, containing attribute pos=[x][y]
       to calculate the distance from her
+
+      Since utils are used to calculate probability weights, they should be
+      positive. So, they are exponentiated.
       '''
       a = self.a
       trust = self.trust[i]
@@ -211,11 +216,50 @@ class Buyer(Agent):
       b = self.b
       p = model.prices[i]
 
-      return a*trust - b*d - p
+      return np.exp(a*trust - b*d - p)
 
-    choice = max([sid for sid in model.sellers], key=util)
+    '''
+    Buyer chooses a seller at weighted random. Weights are normalized utils.
+    '''
+    sid_alive = []
+    utils = []
+    for sid, seller in model.sellers.items():
+      if seller.alive:
+        sid_alive.append(sid)
+        utils.append(util(sid))
+
+    weights = utils / sum(utils)
+    choice = np.random.choice(sid_alive, p=weights)
     model.sellers[choice].sales += 1
-    model.sb[choice] += 1 # update the scoreboard
+
+    '''
+    Update the trust
+      Up on each purchase and down without purchase (forgetting)
+      Building stops at ub, and forgetting stops at lb
+      No update for Wal-Mart
+    '''
+    lb = 1 # Lower bound
+    ub = 2 # Upper bound
+    up = 1.1 # Up with a purchase: x1.1
+    down = 0.95 # Down without a purchase: x0.95
+
+    for sid, seller in model.sellers.items():
+      if seller.w == False:
+        if sid == choice:
+          self.trust[sid] = self.trust[sid] * up
+        else:
+          self.trust[sid] = self.trust[sid] * down
+
+        if self.trust[sid] > ub:
+          self.trust[sid] = ub
+        elif self.trust[sid] < lb:
+          self.trust[sid] = lb
+
+    # '''Update the scoreboard'''
+    # sb = model.sb
+    # # multiply each trust by (1 + normalized score)
+    # self.trust = [self.trust[i]*(1 + item/sum(sb)) for i,item in enumerate(sb)]
+    # model.sb[choice] += 1 # update the scoreboard
 
 
 class Seller(Agent):
@@ -225,7 +269,7 @@ class Seller(Agent):
   costs: fixed costs, working as the threshold of breakeven
   w: boolean for Wal-Mart
   '''
-  def __init__(self, sid, grid, pos, moore, cash, costs, price, w=False):
+  def __init__(self, sid, grid, pos, moore, cash, costs, price, w):
     self.sid = sid
     self.grid = grid
     self.pos = pos
@@ -234,20 +278,21 @@ class Seller(Agent):
     self.costs = costs
     self.price = price
     self.w = w
+    self.alive = True
     self.sales = int(0) # the number of customers at the adjacent period
 
   def step(self, model):
     '''The cash balance changes by #sales - costs (#sales = #buyers)'''
-    # print(self.sales)
     self.cash += int(self.sales - self.costs)
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
       # print("sid to be removed: ", self.sid)
+      self.alive = False
       model.grid._remove_agent(self.pos, self)
       model.schedule.remove(self)
       del model.sellers[self.sid]
-      # model.sellers.remove(self)
+
     # Post a new price
     else:
       # For now, it is fixed and do nothing
