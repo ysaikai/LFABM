@@ -76,11 +76,11 @@ class Trade(Model):
     self.prices = 2 * np.random.rand(ini_sellers - 1)
     self.prices = np.append(self.prices, min(self.prices)*0.9)
 
-    '''
-    Scoreboard
-      Each tally of sales, used as a popularity ranking
-    '''
-    self.sb = np.zeros(self.ini_sellers, dtype=np.int)
+    # '''
+    # Scoreboard
+    #   Each tally of sales, used as a popularity ranking
+    # '''
+    # self.sb = np.zeros(self.ini_sellers, dtype=np.int)
 
     '''Create buyers'''
     for i in range(self.ini_buyers):
@@ -119,7 +119,7 @@ class Trade(Model):
       x = random.randrange(self.width)
       y = random.randrange(self.height)
 
-      cash = int(100) # initial cash balance
+      cash = 100 # initial cash balance
       # relative to ini_buyers, implying the required market share
       costs = 0.1 * ini_buyers
       price = self.prices[i]
@@ -139,13 +139,11 @@ class Trade(Model):
       self.schedule.add(seller)
 
     self.running = True
-    # Debugging
-    self.max_steps = 100
 
   def step(self):
     # initialize the adjacent sales
     for obj in self.sellers.values():
-      obj.sales = int(0)
+      obj.sales = 0
 
     self.schedule.step()
     self.datacollector.collect(self)
@@ -279,7 +277,7 @@ class Seller(Agent):
     self.price = price
     self.w = w
     self.alive = True
-    self.sales = int(0) # the number of customers at the adjacent period
+    self.sales = 0 # the number of customers at the adjacent period
 
   def step(self, model):
     '''The cash balance changes by #sales - costs (#sales = #buyers)'''
