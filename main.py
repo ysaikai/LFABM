@@ -285,7 +285,6 @@ class Seller(Agent):
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
-      # print("sid to be removed: ", self.sid)
       self.alive = False
       model.grid._remove_agent(self.pos, self)
       model.schedule.remove(self)
@@ -297,8 +296,6 @@ class Seller(Agent):
       model.prices[self.sid] = model.prices[self.sid]
 
 
-# Haven't been touched yet
-#
 class RandomActivationByType(RandomActivation):
   '''
   Activate every agent once per step. The order is reshuffled at each step.
