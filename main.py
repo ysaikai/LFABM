@@ -21,6 +21,13 @@ may not use a spatial grid.
 [Initial parameters]
 They are scattered across the scripts. It may be cleaner to specify
 all the initial parameter values in an external text file.
+
+[Entry]
+At each period, there's a random entry of a seller
+Price: the average of the existing prices (except Wal-Mart's)
+Calculate the profitability of each cell at each period, as if it entered
+Set a threshold, Generate weights for those above it, Enter accordingly
+
 '''
 
 import numpy as np
