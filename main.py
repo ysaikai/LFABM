@@ -64,7 +64,9 @@ class Trade(Model):
 
     '''
     Profitability
-      2-dimensional tuple, containing the profitability (pi) for each cell
+      The profitability (pi) for each cell
+      2-dimensional tuple is reduced into 1-dimensional.
+      [0] - (0,0), [1] - (0,1),..., [width] - (1,0),... and so on.
     '''
     self.pi = [0] * (height * width)
     self.entry = False
