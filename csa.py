@@ -1,26 +1,22 @@
 '''
-An agent-based model of local food systems
-
-Based on WoflSheep model created by Project Mesa.
-https://github.com/projectmesa/mesa/tree/master/examples/WolfSheep
+An agent-based model of local food systems (CSA version)
 '''
 
 '''
 Notes
 
-[Activation]
-1. Buyers learn the prices, choose a seller, and buy one unit
-2. Sellers check the cash balance and die or post prices
+[Basic]
+A portion of the sellers operates as a CSA farmer.
+A single period is interpreted as a week.
+A unit of CSA sale corresponds to 52 units of sales for a standard farmer.
+At the beginning of every 52 periods,
+  Share are paid
+  A random regional event that destroys the next t-period sales
+    Costs are avoided
+    Standard: the regular trust depreciation
+    CSA: Besides, members' (the current buyers) trust goes down badly
 
-[Unique identifier]
-Many examples use pos as identifier (x-y position is unique on each grid).
-Here, scalar bid & sid are created to make them independent of spaces
-because it's just natural to use a sequence of integers. Plus, some models
-may not use a spatial grid.
 
-[Initial parameters]
-They are scattered across the scripts. It may be cleaner to specify
-all the initial parameter values in an external text file.
 '''
 
 import numpy as np
