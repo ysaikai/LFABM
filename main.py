@@ -23,8 +23,8 @@ They are scattered across the scripts. It may be cleaner to specify
 all the initial parameter values in an external text file.
 
 [Entry]
-At each period, there's a random entry of a seller
-Price: the average of the existing prices (except Wal-Mart's)
+At each period, there's a random entry of a new seller
+Price: the average of the existing prices (so far, including Wal-Mart)
 Calculate the profitability of each cell at each period, as if it entered
 Set a threshold, Generate weights for those above it, Enter accordingly
 
@@ -62,6 +62,13 @@ class Trade(Model):
       {"Sellers": lambda m: m.schedule.get_type_count(Seller),
       "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
 
+    '''
+    Profitability
+      2-dimensional tuple, containing the profitability (pi) for each cell
+    '''
+    self.pi = [0] * (height * width)
+    self.entry = False
+
     self.cnt = 0 # a counter for debugging
 
     # '''
@@ -80,8 +87,13 @@ class Trade(Model):
       (arbitrary) range from 0 to 2
       Wal-Mart has the lowest price, 90% of the local lowest
     '''
-    self.prices = 2 * np.random.rand(ini_sellers - 1)
-    self.prices = np.append(self.prices, min(self.prices)*0.9)
+    # self.prices = 2 * np.random.rand(ini_sellers - 1)
+    # self.prices = [2] * (ini_sellers - 1)
+    # self.prices.append() = np.append(self.prices, min(self.prices)*0.9)
+    self.prices = {}
+    for i in range(ini_sellers - 1):
+      self.prices[i] = 2
+    self.prices[ini_sellers - 1] = min(self.prices.values())*0.9
 
     # '''
     # Scoreboard
@@ -100,7 +112,7 @@ class Trade(Model):
       y = random.randrange(self.height)
 
       '''income > max(price) to make every sellers affordable'''
-      income = 10 * np.random.rand() + max(self.prices)
+      income = 10 * np.random.rand() + max(self.prices.values())
       # a = np.random.rand() # a coefficient on trust
       a = 1 # (for now) set = 1
       '''
@@ -111,8 +123,10 @@ class Trade(Model):
         character.
       '''
       # trust = 2 * np.random.rand(ini_sellers - 1)
-      trust = np.ones(ini_sellers - 1)
-      trust = np.append(trust, 0) # 0 trust in Wal-Mart
+      trust = {}
+      for i in range(ini_sellers - 1):
+        trust[i] = 1
+      trust[ini_sellers - 1] = 0 # 0 trust in Wal-Mart
       b = 0.02 * np.random.rand() # a coefficient on distance
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
@@ -148,7 +162,11 @@ class Trade(Model):
     self.running = True
 
   def step(self):
-    # initialize the adjacent sales
+    '''Initialize the profitability'''
+    self.pi = [0] * (self.height * self.width)
+    self.entry = False
+
+    '''initialize the adjacent sales'''
     for obj in self.sellers.values():
       obj.sales = 0
 
@@ -158,6 +176,33 @@ class Trade(Model):
       print([self.schedule.time,
         self.schedule.get_type_count(Seller),
         self.schedule.get_type_count(Buyer)])
+
+    '''
+    Determine the most profitable position and whether ot enter
+      Threshold: 15% market share
+    '''
+    opt = max(self.pi)
+    opt_pos = self.pi.index(opt)
+
+    if opt >= 0.15 * self.ini_buyers:
+      self.entry = True
+      x = opt_pos // self.width
+      y = opt_pos % self.width
+      cash = 100 # initial cash balance
+      # relative to ini_buyers, implying the required market share
+      costs = 0.1 * self.ini_buyers
+      sid = max([seller.sid for seller in self.sellers.values()]) + 1
+      price = np.mean([seller.price for seller in self.sellers.values()])
+      w = False
+      seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w)
+      self.sellers[sid] = seller # a dictionary key is an integer
+      self.grid.place_agent(seller, (x, y))
+      self.schedule.add(seller)
+      self.prices[sid] = price
+
+      print("\n**********\n", "Entry!!", "\n**********")
+      print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
+
 
     # Debugging
     self.cnt += 1
@@ -219,9 +264,13 @@ class Buyer(Agent):
       pos = model.sellers[i].pos
       d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
       b = self.b
-      p = model.prices[i]
+      p = model.sellers[i].price
 
       return np.exp(a*trust - b*d - p)
+
+    # '''Add a new seller to Trust vector'''
+    # if model.entry:
+    #   self.trust[sid] = lb
 
     '''
     Buyer chooses a seller at weighted random. Weights are normalized utils.
@@ -266,6 +315,35 @@ class Buyer(Agent):
     # self.trust = [self.trust[i]*(1 + item/sum(sb)) for i,item in enumerate(sb)]
     # model.sb[choice] += 1 # update the scoreboard
 
+    '''
+    Profitability & Entry
+      x - row, y - column (the other way around!?)
+      Allow a position already occupied by an existing seller
+    '''
+    cash = 100
+    costs = 0.1 * model.ini_buyers
+    price = np.mean([seller.price for seller in model.sellers.values()])
+    w = False
+    sid = max([seller.sid for seller in model.sellers.values()]) + 1
+
+    for j in range(len(model.pi)):
+      x = j // model.width
+      y = j % model.width
+      seller = Seller(sid, model.grid, (x, y), True, cash, costs, price, w)
+      model.sellers[sid] = seller
+      self.trust[sid] = lb
+      sid_alive.append(sid)
+      utils.append(util(sid))
+      weights = utils / sum(utils)
+      choice = np.random.choice(sid_alive, p=weights)
+      if choice == sid:
+        model.pi[j] += 1
+      # remove the dummy seller
+      del model.sellers[sid]
+      # del self.trust[sid]
+      del sid_alive[-1]
+      del utils[-1]
+
 
 class Seller(Agent):
   '''
@@ -288,7 +366,7 @@ class Seller(Agent):
 
   def step(self, model):
     '''The cash balance changes by #sales - costs (#sales = #buyers)'''
-    self.cash += int(self.sales - self.costs)
+    self.cash += self.sales - self.costs
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
