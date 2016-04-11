@@ -125,8 +125,8 @@ class Trade(Model):
       '''
       # trust = 2 * np.random.rand(ini_sellers - 1)
       trust = {}
-      for i in range(ini_sellers - 1):
-        trust[i] = 1
+      for j in range(ini_sellers - 1):
+        trust[j] = 1
       trust[ini_sellers - 1] = 0 # 0 trust in Wal-Mart
       b = 0.02 * np.random.rand() # a coefficient on distance
 
@@ -290,7 +290,7 @@ class Buyer(Agent):
     '''
     lb = 1 # Lower bound
     ub = 2 # Upper bound
-    up = 1.1 # Up with a purchase: x1.1
+    up = 1.2 # Up with a purchase: x1.2
     down = 0.95 # Down without a purchase: x0.95
 
     for sid, seller in model.sellers.items():
@@ -304,6 +304,19 @@ class Buyer(Agent):
           self.trust[sid] = ub
         elif self.trust[sid] < lb:
           self.trust[sid] = lb
+
+    # '''
+    # Debugging
+    #   Display trust levels
+    # '''
+    # print("bid:", self.bid)
+    # tmp = list(self.trust.values())
+    # t1 = max(tmp)
+    # tmp.remove(t1)
+    # t2 = max(tmp)
+    # tmp.remove(t2)
+    # t3 = max(tmp)
+    # print("Trust: #1.", t1, ", #2.", t2, ", #3.", t3)
 
     # '''Update the scoreboard'''
     # sb = model.sb
