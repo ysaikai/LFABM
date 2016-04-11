@@ -62,9 +62,10 @@ class Trade(Model):
   ini_sellers = 50
   num_w = 1 # Number of Wal-Mart
   prices = {}
-  for i in range(ini_sellers - 1):
+  for i in range(ini_sellers):
     prices[i] = 2
-  prices[ini_sellers - 1] = min(prices.values())*0.9
+  for i in range(num_w):
+    prices[i] = min(prices.values())*0.9
 
   '''
   Initialization
@@ -77,7 +78,7 @@ class Trade(Model):
   '''
   Debug
   '''
-  entryOn = 0  # Toggle Entry on and off (for quicker running)
+  entryOn = 1  # Toggle Entry on and off (for quicker running)
   sellerDebug = 1  # Toggle for seller variable information
   buyerDebug = False   # Toggle for buyer variable information
 
@@ -193,7 +194,7 @@ class Trade(Model):
       opt = max(self.pi)
       opt_pos = self.pi.index(opt)
 
-      if opt >= 0.15 * self.ini_buyers:
+      if opt >= 0.10 * self.ini_buyers:
         x = opt_pos // self.width
         y = opt_pos % self.width
         cash = 100 # initial cash balance
@@ -371,7 +372,7 @@ class Seller(Agent):
     self.sales = 0 # the number of customers at the adjacent period
 
   def step(self, model):
-    '''The cash balance changes by #sales - costs (#sales = #buyers)'''
+    # The cash balance
     self.cash += self.sales*self.price - self.costs
 
     # Insolvency (Wal-Mart is immortal)
@@ -387,6 +388,7 @@ class Seller(Agent):
       for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
         if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice):
           minNeighborPrice = neighbor.price
+
       if (minNeighborPrice <= self.price):
         # If a lower price nearby they undercut their neighbors
         model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
