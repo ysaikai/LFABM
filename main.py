@@ -103,6 +103,7 @@ class Trade(Model):
     # self.sb = np.zeros(self.ini_sellers, dtype=np.int)
 
     '''Create buyers'''
+    self.buyers = {} # a dictionary of buyer instances
     for i in range(self.ini_buyers):
       '''
       What happens if two pos coincide? Since it manages to run, I guess,
@@ -131,6 +132,7 @@ class Trade(Model):
       b = 0.02 * np.random.rand() # a coefficient on distance
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
+      self.buyers[i] = buyer # a dictionary key is an integer
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
@@ -176,6 +178,23 @@ class Trade(Model):
       print([self.schedule.time,
         self.schedule.get_type_count(Seller),
         self.schedule.get_type_count(Buyer)])
+
+    '''
+    Debugging
+      Display trust levels
+    '''
+    print("\nBuyers trust levels Top3 (sid in brackets)")
+    for obj in self.buyers.values():
+      tmp = list(obj.trust.values())
+      t1 = max(tmp)
+      sid1 = tmp.index(t1)
+      tmp.remove(t1)
+      t2 = max(tmp)
+      sid2 = tmp.index(t2)
+      tmp.remove(t2)
+      t3 = max(tmp)
+      sid3 = tmp.index(t3)
+      print("bid:", obj.bid, "Trust: {t1:.2f}({sid1}), {t2:.2f}({sid2}), {t3:.2f}({sid3})".format(t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
 
     '''
     Determine the most profitable position and whether ot enter
@@ -289,9 +308,9 @@ class Buyer(Agent):
       No update for Wal-Mart
     '''
     lb = 1 # Lower bound
-    ub = 2 # Upper bound
-    up = 1.2 # Up with a purchase: x1.2
-    down = 0.95 # Down without a purchase: x0.95
+    ub = 3 # Upper bound
+    up = 1.3 # Up rate
+    down = 0.95 # Down rate
 
     for sid, seller in model.sellers.items():
       if seller.w == False:
@@ -304,19 +323,6 @@ class Buyer(Agent):
           self.trust[sid] = ub
         elif self.trust[sid] < lb:
           self.trust[sid] = lb
-
-    # '''
-    # Debugging
-    #   Display trust levels
-    # '''
-    # print("bid:", self.bid)
-    # tmp = list(self.trust.values())
-    # t1 = max(tmp)
-    # tmp.remove(t1)
-    # t2 = max(tmp)
-    # tmp.remove(t2)
-    # t3 = max(tmp)
-    # print("Trust: #1.", t1, ", #2.", t2, ", #3.", t3)
 
     # '''Update the scoreboard'''
     # sb = model.sb
