@@ -69,7 +69,6 @@ class Trade(Model):
       [0] - (0,0), [1] - (0,1),..., [width] - (1,0),... and so on.
     '''
     self.pi = [0] * (height * width)
-    self.entry = False
 
     self.cnt = 0 # a counter for debugging
 
@@ -166,7 +165,6 @@ class Trade(Model):
   def step(self):
     '''Initialize the profitability'''
     self.pi = [0] * (self.height * self.width)
-    self.entry = False
 
     '''initialize the adjacent sales'''
     for obj in self.sellers.values():
@@ -183,27 +181,27 @@ class Trade(Model):
     Determine the most profitable position and whether ot enter
       Threshold: 15% market share
     '''
-    opt = max(self.pi)
-    opt_pos = self.pi.index(opt)
+    if self.pi != [0] * (self.height * self.width):
+      opt = max(self.pi)
+      opt_pos = self.pi.index(opt)
 
-    if opt >= 0.15 * self.ini_buyers:
-      self.entry = True
-      x = opt_pos // self.width
-      y = opt_pos % self.width
-      cash = 100 # initial cash balance
-      # relative to ini_buyers, implying the required market share
-      costs = 0.1 * self.ini_buyers
-      sid = max([seller.sid for seller in self.sellers.values()]) + 1
-      price = np.mean([seller.price for seller in self.sellers.values()])
-      w = False
-      seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w)
-      self.sellers[sid] = seller # a dictionary key is an integer
-      self.grid.place_agent(seller, (x, y))
-      self.schedule.add(seller)
-      self.prices[sid] = price
+      if opt >= 0.15 * self.ini_buyers:
+        x = opt_pos // self.width
+        y = opt_pos % self.width
+        cash = 100 # initial cash balance
+        # relative to ini_buyers, implying the required market share
+        costs = 0.1 * self.ini_buyers
+        sid = max([seller.sid for seller in self.sellers.values()]) + 1
+        price = np.mean([seller.price for seller in self.sellers.values()])
+        w = False
+        seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w)
+        self.sellers[sid] = seller # a dictionary key is an integer
+        self.grid.place_agent(seller, (x, y))
+        self.schedule.add(seller)
+        self.prices[sid] = price
 
-      print("\n**********\n", "Entry!!", "\n**********")
-      print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
+        print("\n**********\n", "Entry!!", "\n**********")
+        print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
 
 
     # Debugging
@@ -270,10 +268,6 @@ class Buyer(Agent):
 
       return np.exp(a*trust - b*d - p)
 
-    # '''Add a new seller to Trust vector'''
-    # if model.entry:
-    #   self.trust[sid] = lb
-
     '''
     Buyer chooses a seller at weighted random. Weights are normalized utils.
     '''
@@ -322,29 +316,30 @@ class Buyer(Agent):
       x - row, y - column (the other way around!?)
       Allow a position already occupied by an existing seller
     '''
-    cash = 100
-    costs = 0.1 * model.ini_buyers
-    price = np.mean([seller.price for seller in model.sellers.values()])
-    w = False
-    sid = max([seller.sid for seller in model.sellers.values()]) + 1
+    if model.cnt % 3 == 0:
+      cash = 100
+      costs = 0.1 * model.ini_buyers
+      price = np.mean([seller.price for seller in model.sellers.values()])
+      w = False
+      sid = max([seller.sid for seller in model.sellers.values()]) + 1
 
-    for j in range(len(model.pi)):
-      x = j // model.width
-      y = j % model.width
-      seller = Seller(sid, model.grid, (x, y), True, cash, costs, price, w)
-      model.sellers[sid] = seller
-      self.trust[sid] = lb
-      sid_alive.append(sid)
-      utils.append(util(sid))
-      weights = utils / sum(utils)
-      choice = np.random.choice(sid_alive, p=weights)
-      if choice == sid:
-        model.pi[j] += 1
-      # remove the dummy seller
-      del model.sellers[sid]
-      # del self.trust[sid]
-      del sid_alive[-1]
-      del utils[-1]
+      for j in range(len(model.pi)):
+        x = j // model.width
+        y = j % model.width
+        seller = Seller(sid, model.grid, (x, y), True, cash, costs, price, w)
+        model.sellers[sid] = seller
+        self.trust[sid] = lb
+        sid_alive.append(sid)
+        utils.append(util(sid))
+        weights = utils / sum(utils)
+        choice = np.random.choice(sid_alive, p=weights)
+        if choice == sid:
+          model.pi[j] += 1
+        # remove the dummy seller
+        del model.sellers[sid]
+        # del self.trust[sid]
+        del sid_alive[-1]
+        del utils[-1]
 
 
 class Seller(Agent):
