@@ -49,6 +49,7 @@ class Trade(Model):
   ini_buyers = 100
   ini_sellers = 50
   verbose = False # Print-monitoring
+  entryOn = False  # Toggle Entry on and off (for quicker running)
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
     self.height = height
@@ -200,7 +201,7 @@ class Trade(Model):
     Determine the most profitable position and whether ot enter
       Threshold: 15% market share
     '''
-    if self.pi != [0] * (self.height * self.width):
+    if (self.entryOn and self.pi != [0] * (self.height * self.width)):
       opt = max(self.pi)
       opt_pos = self.pi.index(opt)
 
@@ -335,7 +336,7 @@ class Buyer(Agent):
       x - row, y - column (the other way around!?)
       Allow a position already occupied by an existing seller
     '''
-    if model.cnt % 3 == 0:
+    if (model.entryOn and model.cnt % 3 == 0):
       cash = 100
       costs = 0.1 * model.ini_buyers
       price = np.mean([seller.price for seller in model.sellers.values()])
