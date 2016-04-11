@@ -49,7 +49,7 @@ class Trade(Model):
   ini_buyers = 100
   ini_sellers = 50
   verbose = False # Print-monitoring
-  entryOn = False  # Toggle Entry on and off (for quicker running)
+  entryOn = True  # Toggle Entry on and off (for quicker running)
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
     self.height = height
@@ -195,7 +195,7 @@ class Trade(Model):
       tmp.remove(t2)
       t3 = max(tmp)
       sid3 = tmp.index(t3)
-      print("bid:", obj.bid, "Trust: {t1:.2f}({sid1}), {t2:.2f}({sid2}), {t3:.2f}({sid3})".format(t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
+    #  print("bid:", obj.bid, "Trust: {t1:.2f}({sid1}), {t2:.2f}({sid2}), {t3:.2f}({sid3})".format(t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
 
     '''
     Determine the most profitable position and whether ot enter
@@ -227,8 +227,10 @@ class Trade(Model):
     # Debugging
     self.cnt += 1
     print("\nStep: ", self.cnt)
+    print("{0:<6} {1:<9} {2:<7} {3:<7} {4:<7}".format("sid", "Cell", "Price", "Sales", "Cash"))
     for obj in self.sellers.values():
-      print("sid:", obj.sid, ", Sales:", obj.sales, ", Cash:", obj.cash)
+      print("{0:<6} {1:<9} {2:<7} {3:<7} {4:<7}".format(obj.sid, str(obj.pos), round(obj.price,2), obj.sales, round(obj.cash,2)))
+      #print("sid:", obj.sid, ", Cell:", str(obj.pos), ", Price:", round(obj.price,2), ", Sales:", obj.sales, ", Cash:", obj.cash)
 
 
 # Not yet worked on
@@ -369,6 +371,10 @@ class Seller(Agent):
   costs: fixed costs, working as the threshold of breakeven
   w: boolean for Wal-Mart
   '''
+  underCutPercent = 0.99     # Percent that seller under cuts neighbors price
+  priceAdjust = 0.95         # Percent they reduce price (in absence of neighbors)
+  obsRadius = 1              # How far seller can observe prices (in cell units)
+
   def __init__(self, sid, grid, pos, moore, cash, costs, price, w):
     self.sid = sid
     self.grid = grid
@@ -392,11 +398,21 @@ class Seller(Agent):
       model.schedule.remove(self)
       del model.sellers[self.sid]
 
-    # Post a new price
-    else:
-      # For now, it is fixed and do nothing
-      #if self.sales 
-      model.prices[self.sid] = model.prices[self.sid]
+    # React if sales were too low (ie didn't cover all the costs)
+    elif (np.random.rand() > (self.price*self.sales)/self.costs):
+      minNeighborPrice = 100000
+      for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
+        if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice): 
+          minNeighborPrice = neighbor.price
+      if (minNeighborPrice <= self.price): 
+        # If a lower price nearby they undercut their neighbors
+        model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
+        self.price = model.prices[self.sid]
+      else:
+        # Keep their price the same for now (otherwise it's very unstable)
+        #model.prices[self.sid] = 0.95*model.prices[self.sid]
+        #self.price = model.prices[self.sid]
+        model.prices[self.sid] = model.prices[self.sid]
 
 
 class RandomActivationByType(RandomActivation):
