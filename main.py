@@ -382,7 +382,7 @@ class Seller(Agent):
 
   def step(self, model):
     '''The cash balance changes by #sales - costs (#sales = #buyers)'''
-    self.cash += self.sales - self.costs
+    self.cash += self.sales*self.price - self.costs
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
@@ -394,6 +394,7 @@ class Seller(Agent):
     # Post a new price
     else:
       # For now, it is fixed and do nothing
+      #if self.sales 
       model.prices[self.sid] = model.prices[self.sid]
 
 
