@@ -22,11 +22,22 @@ may not use a spatial grid.
 They are scattered across the scripts. It may be cleaner to specify
 all the initial parameter values in an external text file.
 
+[Price]
+To let buyers access the prices, define as a Trade class attribute
+instead of an individual seller's attribute.
+(arbitrary) range from 0 to 2
+Wal-Mart has the lowest price, 90% of the local lowest
+
 [Entry]
 At each period, there's a random entry of a new seller
 Price: the average of the existing prices (so far, including Wal-Mart)
 Calculate the profitability of each cell at each period, as if it entered
 Set a threshold, Generate weights for those above it, Enter accordingly
+
+Profitability
+  The profitability (pi) for each cell
+  2-dimensional tuple is reduced into 1-dimensional.
+  [0] - (0,0), [1] - (0,1),..., [width] - (1,0),... and so on.
 
 '''
 
@@ -41,6 +52,7 @@ from mesa.datacollection import DataCollector
 
 
 class Trade(Model):
+  verbose = False # Print-monitoring
   '''
   Parameters
   '''
@@ -48,10 +60,27 @@ class Trade(Model):
   width = 20
   ini_buyers = 100
   ini_sellers = 50
-  verbose = False # Print-monitoring
-  entryOn = True  # Toggle Entry on and off (for quicker running)
-  sellerDebug = False  # Toggle for seller variable information
-  buyerDebug = True   # Toggle for buyer variable information
+  num_w = 1 # Number of Wal-Mart
+  prices = {}
+  for i in range(ini_sellers - 1):
+    prices[i] = 2
+  prices[ini_sellers - 1] = min(prices.values())*0.9
+
+  '''
+  Initialization
+  '''
+  buyers = {} # Dictionary of buyer instances
+  sellers = {} # Dictionary of seller instances
+  pi = [0] * (height * width) # Profitability
+  cnt = 0 # Step counter
+
+  '''
+  Debug
+  '''
+  entryOn = 0  # Toggle Entry on and off (for quicker running)
+  sellerDebug = 1  # Toggle for seller variable information
+  buyerDebug = False   # Toggle for buyer variable information
+
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
     self.height = height
@@ -65,48 +94,7 @@ class Trade(Model):
       {"Sellers": lambda m: m.schedule.get_type_count(Seller),
       "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
 
-    '''
-    Profitability
-      The profitability (pi) for each cell
-      2-dimensional tuple is reduced into 1-dimensional.
-      [0] - (0,0), [1] - (0,1),..., [width] - (1,0),... and so on.
-    '''
-    self.pi = [0] * (height * width)
-
-    self.cnt = 0 # a counter for debugging
-
-    # '''
-    # Generate a matching matrix
-    #   (for now) just random 0 & 1
-    #   Sellers are on rows. Buyers on columns.
-    #   Wal-Mart has 1s for every buyers (correct?)
-    # '''
-    # self.match = np.random.randint(2, size=(ini_sellers-1, ini_buyers))
-    # self.match = np.append(match, [np.ones(ini_buyers,dtype=np.int)], axis=0)
-
-    '''
-    Price
-      To let buyers access the prices, define as a Trade class attribute
-      instead of an individual seller's attribute.
-      (arbitrary) range from 0 to 2
-      Wal-Mart has the lowest price, 90% of the local lowest
-    '''
-    # self.prices = 2 * np.random.rand(ini_sellers - 1)
-    # self.prices = [2] * (ini_sellers - 1)
-    # self.prices.append() = np.append(self.prices, min(self.prices)*0.9)
-    self.prices = {}
-    for i in range(ini_sellers - 1):
-      self.prices[i] = 2
-    self.prices[ini_sellers - 1] = min(self.prices.values())*0.9
-
-    # '''
-    # Scoreboard
-    #   Each tally of sales, used as a popularity ranking
-    # '''
-    # self.sb = np.zeros(self.ini_sellers, dtype=np.int)
-
     '''Create buyers'''
-    self.buyers = {} # a dictionary of buyer instances
     for i in range(self.ini_buyers):
       '''
       What happens if two pos coincide? Since it manages to run, I guess,
@@ -118,7 +106,6 @@ class Trade(Model):
 
       '''income > max(price) to make every sellers affordable'''
       income = 10 * np.random.rand() + max(self.prices.values())
-      # a = np.random.rand() # a coefficient on trust
       a = 1 # (for now) set = 1
       '''
       Trust
@@ -127,20 +114,19 @@ class Trade(Model):
         which helps a buyer make a decision. e.g. goods & service quality and
         character.
       '''
-      # trust = 2 * np.random.rand(ini_sellers - 1)
       trust = {}
-      for j in range(ini_sellers - 1):
+      for j in range(ini_sellers):
         trust[j] = 1
-      trust[ini_sellers - 1] = 0 # 0 trust in Wal-Mart
+      for j in range(self.num_w):
+        trust[j] = 0 # 0 trust in Wal-Mart
       b = 0.02 * np.random.rand() # a coefficient on distance
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
-      self.buyers[i] = buyer # a dictionary key is an integer
+      self.buyers[i] = buyer # Dictionary key is an integer
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
 
     '''Create sellers'''
-    self.sellers = {} # a dictionary of seller instances
     for i in range(self.ini_sellers):
       # the same concern of coincident positions as above
       x = random.randrange(self.width)
@@ -151,8 +137,7 @@ class Trade(Model):
       costs = 0.1 * ini_buyers
       price = self.prices[i]
       w = False
-      if i == self.ini_sellers - 1:
-        w = True # the last is Wal-Mart
+      if i < self.num_w: w = True
 
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
       '''
@@ -228,13 +213,13 @@ class Trade(Model):
           print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
 
 
-    # Debugging
+    '''Debug'''
     self.cnt += 1
     if self.sellerDebug:
       print("\nStep: ", self.cnt)
-      print("{0:<5} {1:<9} {2:<7} {3:<7} {4:<7}".format("sid", "Cell", "Price", "Sales", "Cash"))
+      print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<7}".format("sid", "Cell", "W", "Price", "Sales", "Cash"))
       for obj in self.sellers.values():
-        print("{0:<5} {1:<9} {2:<7} {3:<7} {4:<7}".format(obj.sid, str(obj.pos), round(obj.price,2), obj.sales, round(obj.cash,2)))
+        print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<7}".format(obj.sid, str(obj.pos), str(obj.w), round(obj.price,2), obj.sales, round(obj.cash,2)))
 
 
 # Not yet worked on
@@ -331,12 +316,6 @@ class Buyer(Agent):
         elif self.trust[sid] < lb:
           self.trust[sid] = lb
 
-    # '''Update the scoreboard'''
-    # sb = model.sb
-    # # multiply each trust by (1 + normalized score)
-    # self.trust = [self.trust[i]*(1 + item/sum(sb)) for i,item in enumerate(sb)]
-    # model.sb[choice] += 1 # update the scoreboard
-
     '''
     Profitability & Entry
       x - row, y - column (the other way around!?)
@@ -406,9 +385,9 @@ class Seller(Agent):
     elif (np.random.rand() > (self.price*self.sales)/self.costs):
       minNeighborPrice = 100000
       for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
-        if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice): 
+        if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice):
           minNeighborPrice = neighbor.price
-      if (minNeighborPrice <= self.price): 
+      if (minNeighborPrice <= self.price):
         # If a lower price nearby they undercut their neighbors
         model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
         self.price = model.prices[self.sid]
