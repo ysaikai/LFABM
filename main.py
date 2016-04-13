@@ -58,13 +58,14 @@ class Trade(Model):
   '''
   height = 20
   width = 20
-  ini_buyers = 300
+  ini_buyers = 100
   ini_sellers = 50
   ini_cash = 100
   num_w = 2 # Number of Wal-Mart
   prices = {}
   for i in range(ini_sellers):
     prices[i] = 2
+    # prices[i] = np.random.rand() + 1
   for i in range(num_w):
     prices[i] = min(prices.values())*0.9
   entryOn = 0  # Toggle Entry on and off (for quicker running)
@@ -221,9 +222,14 @@ class Trade(Model):
     self.cnt += 1
     if self.sellerDebug:
       print("\nStep: ", self.cnt)
-      print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<7}".format("sid", "Cell", "W", "Price", "Sales", "Cash"))
+      print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format("sid", "Cell", "W", "Price", "Sales", "Cash", "Trust"))
       for obj in self.sellers.values():
-        print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<7}".format(obj.sid, str(obj.pos), str(obj.w), round(obj.price,2), obj.sales, round(obj.cash,2)))
+        sid = obj.sid
+        t = 0 # To calculate the cumulative trust
+        for buyer in self.buyers.values():
+          t += buyer.trust[sid]
+        t = int(t)
+        print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format(sid, str(obj.pos), str(obj.w), round(obj.price,2), obj.sales, round(obj.cash,2),t))
 
 
 # Not yet worked on
