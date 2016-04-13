@@ -58,8 +58,8 @@ class Trade(Model):
   '''
   height = 20
   width = 20
-  ini_buyers = 100
-  ini_sellers = 30
+  ini_buyers = 300
+  ini_sellers = 50
   ini_cash = 100
   num_w = 2 # Number of Wal-Mart
   prices = {}
@@ -170,12 +170,12 @@ class Trade(Model):
         self.schedule.get_type_count(Buyer)])
 
     '''
-    Debugging
+    Debug
       Display trust levels
     '''
     if self.buyerDebug:
       print("\nBuyers trust levels Top3 (sid in brackets)")
-      print("{0:5} {1:9} {2:9} {3:9}".format("bid", "#1", "#2", "#3"))
+      print("{0:6} {1:9} {2:9} {3:9}".format("bid", "#1", "#2", "#3"))
       for obj in self.buyers.values():
         bid = obj.bid
         tmp = list(obj.trust.values())
@@ -187,7 +187,7 @@ class Trade(Model):
         tmp.remove(t2)
         t3 = max(tmp)
         sid3 = tmp.index(t3)
-        print("{bid:02d} {t1:5.2f}({sid1:02d}) {t2:5.2f}({sid2:02d}) {t3:5.2f}({sid3:02d})".format(bid=bid,t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
+        print("{bid:03d} {t1:5.2f}({sid1:02d}) {t2:5.2f}({sid2:02d}) {t3:5.2f}({sid3:02d})".format(bid=bid,t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
 
     '''
     Determine the most profitable position and whether ot enter
