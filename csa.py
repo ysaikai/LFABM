@@ -15,5 +15,4 @@ At the beginning of every 52 periods,
 '''
 
 frac_CSA = 0.5
-frac_std = 1 - frac_CSA
 len_season = 26 # length of a season

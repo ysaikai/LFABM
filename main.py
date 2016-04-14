@@ -58,16 +58,17 @@ class Trade(Model):
   '''
   height = 20
   width = 20
-  ini_buyers = 100
+  ini_buyers = 200
   ini_sellers = 50
   ini_cash = 100
   num_w = 2 # Number of Wal-Mart
   prices = {}
   for i in range(ini_sellers):
-    prices[i] = 2
-    # prices[i] = np.random.rand() + 1
+    # prices[i] = 2
+    prices[i] = np.random.rand() + 1
+  min_price = min(prices.values())
   for i in range(num_w):
-    prices[i] = min(prices.values())*0.9
+    prices[i] = min_price*0.9
   entryOn = 0  # Toggle Entry on and off (for quicker running)
 
   '''
@@ -109,20 +110,20 @@ class Trade(Model):
 
       '''income > max(price) to make every sellers affordable'''
       income = 10 * np.random.rand() + max(self.prices.values())
-      a = 1 # (for now) set = 1
+      a = 1
       '''
       Trust
-        A vector of trust levels in the sellers (1s and 0)
+        A vector of trust levels in the sellers
         Trust encapsulates all the 'quality' information about each seller,
         which helps a buyer make a decision. e.g. goods & service quality and
         character.
       '''
       trust = {}
       for j in range(ini_sellers):
-        trust[j] = 1
+        trust[j] = 2*np.random.rand()
       for j in range(self.num_w):
         trust[j] = 0 # 0 trust in Wal-Mart
-      b = 0.02 * np.random.rand() # a coefficient on distance
+      b = 0.5 * np.random.rand() # coefficient on distance
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
       self.buyers[i] = buyer # Dictionary key is an integer
@@ -378,10 +379,10 @@ class Seller(Agent):
     self.price = price
     self.w = w
     self.alive = True
-    self.sales = 0 # the number of customers at the adjacent period
+    self.sales = 0 # Number of customers at the adjacent period
 
   def step(self, model):
-    # The cash balance
+    # Cash balance
     self.cash += self.sales*self.price - self.costs
 
     # Insolvency (Wal-Mart is immortal)
