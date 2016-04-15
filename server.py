@@ -1,6 +1,11 @@
-from main import Seller, Buyer, Trade
+# from main import Seller, Buyer, Trade
+import main
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import CanvasGrid, ChartModule
+
+'''Does this fix the cash balance issue?'''
+import importlib
+importlib.reload(main)
 
 color_buyer = "#ffffff" # grey
 color_seller = "#339900" # green
@@ -17,7 +22,7 @@ def LFABM_portrayal(agent):
   '''
   # The following shows only the static color reflecting the initial prices.
   # If we want to dynamically change the colors, need to go thru the scheduler.
-  if type(agent) is Seller:
+  if type(agent) is main.Seller:
     if agent.w:
       portrayal["Color"] = color_WM
     else:
@@ -33,7 +38,7 @@ def LFABM_portrayal(agent):
     portrayal["r"] = 0.5
     portrayal["Layer"] = 2
 
-  elif type(agent) is Buyer:
+  elif type(agent) is main.Buyer:
     portrayal["Color"] = color_buyer
     portrayal["r"] = 0.8
     portrayal["Layer"] = 1
@@ -48,5 +53,5 @@ canvas_element = CanvasGrid(LFABM_portrayal, 20, 20, 500, 500)
 chart_element = ChartModule([
   {"Label": "Sellers", "Color": color_seller}])
 
-server = ModularServer(Trade, [canvas_element, chart_element], modelname)
+server = ModularServer(main.Trade, [canvas_element, chart_element], modelname)
 server.launch()
