@@ -61,8 +61,10 @@ class Trade(Model):
   ini_sellers = 50
   ini_cash = 100
   num_w = 2 # Number of Wal-Mart
-  costs = 0.1 * ini_buyers
+  costs = 0.05 * ini_buyers
   entryOn = 0  # Toggle Entry on and off (for quicker running)
+  csa = 1
+  csa_t = 26 # CSA period
 
   '''
   Initialization
@@ -70,7 +72,6 @@ class Trade(Model):
   buyers = {} # Dictionary of buyer instances
   sellers = {} # Dictionary of seller instances
   pi = [0] * (height * width) # Profitability
-  cnt = 0 # Step counter
 
   '''
   Debug
@@ -84,7 +85,7 @@ class Trade(Model):
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
-
+    self.cnt = 0
     prices = {}
     for i in range(ini_sellers):
       # prices[i] = 2
@@ -125,7 +126,8 @@ class Trade(Model):
         trust[j] = 2*np.random.rand()
       for j in range(self.num_w):
         trust[j] = 0 # 0 trust in Wal-Mart
-      b = 0.5 * np.random.rand() # coefficient on distance
+      # b = 0.5*np.random.rand() # coefficient on distance
+      b = 1
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
       self.buyers[i] = buyer # Dictionary key is an integer
@@ -159,12 +161,18 @@ class Trade(Model):
     self.running = True
 
   def step(self):
+    self.cnt += 1
+
     '''Initialize the profitability'''
     self.pi = [0] * (self.height * self.width)
 
     '''initialize the adjacent sales'''
     for obj in self.sellers.values():
       obj.sales = 0
+
+    '''Add customer list'''
+    for obj in self.sellers.values():
+      obj.customers[self.cnt] = []
 
     self.schedule.step()
     self.datacollector.collect(self)
@@ -195,13 +203,13 @@ class Trade(Model):
 
     '''
     Determine the most profitable position and whether ot enter
-      Threshold: 15% market share
+      Threshold: 10% greater than the fixed costs
     '''
     if (self.entryOn and self.pi != [0] * (self.height * self.width)):
       opt = max(self.pi)
       opt_pos = self.pi.index(opt)
 
-      if opt >= 0.10 * self.ini_buyers:
+      if opt >= self.costs * 1.1:
         x = opt_pos // self.width
         y = opt_pos % self.width
         cash = self.ini_cash # initial cash balance
@@ -216,23 +224,27 @@ class Trade(Model):
         self.schedule.add(seller)
         self.prices[sid] = price
 
-        if self.sellerDebug:
+        if self.entryOn:
           print("\n**********\n", "Entry!!", "\n**********")
           print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
 
-
-    '''Debug'''
-    self.cnt += 1
+    '''
+    Debug
+      Show seller information
+    '''
     if self.sellerDebug:
-      print("\nStep: ", self.cnt)
-      print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format("sid", "Cell", "W", "Price", "Sales", "Cash", "Trust"))
+      print("\nStep:", self.cnt)
+      print(len(self.sellers)-self.num_w, "local sellers")
+      print("{0:<5} {1:<9} {2:<6} {3:<6} {4:<7} {5:<7} {6:<8} {7:<7}".format("sid", "Cell", "W", "CSA", "Price", "Sales", "Cash", "Trust"))
       for obj in self.sellers.values():
         sid = obj.sid
         t = 0 # To calculate the cumulative trust
         for buyer in self.buyers.values():
           t += buyer.trust[sid]
         t = int(t)
-        print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format(sid, str(obj.pos), str(obj.w), round(obj.price,2), obj.sales, round(obj.cash,2),t))
+        print("{0:<5} {1:<9} {2:<6} {3:<6} {4:<7} {5:<7} {6:<8} {7:<7}".format(sid, str(obj.pos), str(obj.w), str(obj.csa), round(obj.price,2), obj.sales, round(obj.cash,2),t))
+
+        # print(obj.customers)
 
 
 # Not yet worked on
@@ -271,6 +283,7 @@ class Buyer(Agent):
     self.trust = trust
     self.income = income
     self.b = b
+    self.csa = False
 
   def step(self, model):
     def util(i):
@@ -292,72 +305,75 @@ class Buyer(Agent):
 
       return np.exp(a*trust - b*d - p)
 
-    '''
-    Buyer chooses a seller at weighted random. Weights are normalized utils.
-    '''
-    sid_alive = []
-    utils = []
-    for sid, seller in model.sellers.items():
-      if seller.alive:
-        sid_alive.append(sid)
-        utils.append(util(sid))
+    # A bad coding, CSA decision covers too wide. Pardon me for awhile!
+    if self.csa == False:
+      '''
+      Buyer chooses a seller at weighted random. Weights are normalized utils.
+      '''
+      sid_alive = []
+      utils = []
+      for sid, seller in model.sellers.items():
+        if seller.alive:
+          sid_alive.append(sid)
+          utils.append(util(sid))
 
-    weights = utils / sum(utils)
-    choice = np.random.choice(sid_alive, p=weights)
-    model.sellers[choice].sales += 1
+      weights = utils / sum(utils)
+      choice = np.random.choice(sid_alive, p=weights)
+      model.sellers[choice].sales += 1
+      model.sellers[choice].customers[model.cnt].append(self.bid)
 
-    '''
-    Update the trust
-      Up on each purchase and down without purchase (forgetting)
-      Building stops at ub, and forgetting stops at lb
-      No update for Wal-Mart
-    '''
-    lb = 1 # Lower bound
-    ub = 3 # Upper bound
-    up = 1.3 # Up rate
-    down = 0.95 # Down rate
+      '''
+      Update the trust
+        Up on each purchase and down without purchase (forgetting)
+        Building stops at ub, and forgetting stops at lb
+        No update for Wal-Mart
+      '''
+      lb = 1 # Lower bound
+      ub = 3 # Upper bound
+      up = 1.2 # Up rate
+      down = 0.95 # Down rate
 
-    for sid, seller in model.sellers.items():
-      if seller.w == False:
-        if sid == choice:
-          self.trust[sid] = self.trust[sid] * up
-        else:
-          self.trust[sid] = self.trust[sid] * down
+      for sid, seller in model.sellers.items():
+        if seller.w == False:
+          if sid == choice:
+            self.trust[sid] = self.trust[sid] * up
+          else:
+            self.trust[sid] = self.trust[sid] * down
 
-        if self.trust[sid] > ub:
-          self.trust[sid] = ub
-        elif self.trust[sid] < lb:
+          if self.trust[sid] > ub:
+            self.trust[sid] = ub
+          elif self.trust[sid] < lb:
+            self.trust[sid] = lb
+
+      '''
+      Profitability & Entry
+        x - row, y - column (the other way around!?)
+        Allow a position already occupied by an existing seller
+      '''
+      if (model.entryOn and model.cnt % 3 == 0):
+        cash = model.ini_cash
+        costs = model.costs
+        price = np.mean([seller.price for seller in model.sellers.values()])
+        w = False
+        sid = max([seller.sid for seller in model.sellers.values()]) + 1
+
+        for j in range(len(model.pi)):
+          x = j // model.width
+          y = j % model.width
+          seller = Seller(sid, model.grid, (x, y), True, cash, costs, price, w)
+          model.sellers[sid] = seller
           self.trust[sid] = lb
-
-    '''
-    Profitability & Entry
-      x - row, y - column (the other way around!?)
-      Allow a position already occupied by an existing seller
-    '''
-    if (model.entryOn and model.cnt % 3 == 0):
-      cash = self.ini_cash
-      costs = model.costs
-      price = np.mean([seller.price for seller in model.sellers.values()])
-      w = False
-      sid = max([seller.sid for seller in model.sellers.values()]) + 1
-
-      for j in range(len(model.pi)):
-        x = j // model.width
-        y = j % model.width
-        seller = Seller(sid, model.grid, (x, y), True, cash, costs, price, w)
-        model.sellers[sid] = seller
-        self.trust[sid] = lb
-        sid_alive.append(sid)
-        utils.append(util(sid))
-        weights = utils / sum(utils)
-        choice = np.random.choice(sid_alive, p=weights)
-        if choice == sid:
-          model.pi[j] += 1
-        # remove the dummy seller
-        del model.sellers[sid]
-        # del self.trust[sid]
-        del sid_alive[-1]
-        del utils[-1]
+          sid_alive.append(sid)
+          utils.append(util(sid))
+          weights = utils / sum(utils)
+          choice = np.random.choice(sid_alive, p=weights)
+          if choice == sid:
+            model.pi[j] += 1
+          # remove the dummy seller
+          del model.sellers[sid]
+          # del self.trust[sid]
+          del sid_alive[-1]
+          del utils[-1]
 
 
 class Seller(Agent):
@@ -382,10 +398,16 @@ class Seller(Agent):
     self.w = w
     self.alive = True
     self.sales = 0 # Number of customers at the adjacent period
+    self.csa = False
+    self.cnt_csa = 0
+    self.csa_list = []
+    self.customers = {}
 
   def step(self, model):
     # Cash balance
-    self.cash += self.sales*self.price - self.costs
+    if self.csa == False:
+      profit = self.sales*self.price - self.costs
+      self.cash += profit
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
@@ -394,22 +416,42 @@ class Seller(Agent):
       model.schedule.remove(self)
       del model.sellers[self.sid]
 
-    # React if sales were too low (ie didn't cover all the costs)
-    elif (np.random.rand() > (self.price*self.sales)/self.costs):
-      minNeighborPrice = 100000
-      for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
-        if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice):
-          minNeighborPrice = neighbor.price
+    if self.alive:
+      if model.csa:
+        '''Become a CSA farmer'''
+        if (self.sales*self.price > self.costs*1.5 and self.csa == 0):
+          for customer in self.customers[model.cnt]:
+            model.buyers[customer].csa = True
+          self.cash += profit*(model.csa_t - 1)
+          self.csa = True
+          self.cnt_csa = 0
+          self.csa_list = self.customers[model.cnt]
+          self.alive = False # Temporarily disappears from buyers' eyes
 
-      if (minNeighborPrice <= self.price):
-        # If a lower price nearby they undercut their neighbors
-        model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
-        self.price = model.prices[self.sid]
-      else:
-        # Keep their price the same for now (otherwise it's very unstable)
-        #model.prices[self.sid] = 0.95*model.prices[self.sid]
-        #self.price = model.prices[self.sid]
-        model.prices[self.sid] = model.prices[self.sid]
+      # React if sales were too low (ie didn't cover all the costs)
+      if (self.csa == 0 and np.random.rand() > self.price*self.sales/self.costs):
+        minNeighborPrice = 100000
+        for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
+          if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice):
+            minNeighborPrice = neighbor.price
+
+        if (minNeighborPrice <= self.price):
+          # If a lower price nearby they undercut their neighbors
+          model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
+          self.price = model.prices[self.sid]
+        else:
+          # Keep their price the same for now (otherwise it's very unstable)
+          #model.prices[self.sid] = 0.95*model.prices[self.sid]
+          #self.price = model.prices[self.sid]
+          model.prices[self.sid] = model.prices[self.sid]
+
+    if self.csa:
+      self.cnt_csa += 1
+    if self.cnt_csa >= model.csa_t:
+      for customer in self.csa_list:
+        model.buyers[customer].csa = False
+      self.csa = False
+      self.alive = True
 
 
 class RandomActivationByType(RandomActivation):
