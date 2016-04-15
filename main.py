@@ -25,7 +25,6 @@ all the initial parameter values in an external text file.
 [Price]
 To let buyers access the prices, define as a Trade class attribute
 instead of an individual seller's attribute.
-(arbitrary) range from 0 to 2
 Wal-Mart has the lowest price, 90% of the local lowest
 
 [Entry]
@@ -62,13 +61,7 @@ class Trade(Model):
   ini_sellers = 50
   ini_cash = 100
   num_w = 2 # Number of Wal-Mart
-  prices = {}
-  for i in range(ini_sellers):
-    # prices[i] = 2
-    prices[i] = np.random.rand() + 1
-  min_price = min(prices.values())
-  for i in range(num_w):
-    prices[i] = min_price*0.9
+  costs = 0.1 * ini_buyers
   entryOn = 0  # Toggle Entry on and off (for quicker running)
 
   '''
@@ -91,6 +84,15 @@ class Trade(Model):
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
+
+    prices = {}
+    for i in range(ini_sellers):
+      # prices[i] = 2
+      prices[i] = 0.5*np.random.rand() + 1.5 # 1.5 - 2.0
+    min_price = min(prices.values())
+    for i in range(self.num_w):
+      prices[i] = min_price*0.9
+    self.prices = prices
 
     self.schedule = RandomActivationByType(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
@@ -138,7 +140,7 @@ class Trade(Model):
 
       cash = self.ini_cash # initial cash balance
       # relative to ini_buyers, implying the required market share
-      costs = 0.1 * ini_buyers
+      costs = self.costs
       price = self.prices[i]
       w = False
       if i < self.num_w: w = True
@@ -204,7 +206,7 @@ class Trade(Model):
         y = opt_pos % self.width
         cash = self.ini_cash # initial cash balance
         # relative to ini_buyers, implying the required market share
-        costs = 0.1 * self.ini_buyers
+        costs = self.costs
         sid = max([seller.sid for seller in self.sellers.values()]) + 1
         price = np.mean([seller.price for seller in self.sellers.values()])
         w = False
@@ -334,7 +336,7 @@ class Buyer(Agent):
     '''
     if (model.entryOn and model.cnt % 3 == 0):
       cash = self.ini_cash
-      costs = 0.1 * model.ini_buyers
+      costs = model.costs
       price = np.mean([seller.price for seller in model.sellers.values()])
       w = False
       sid = max([seller.sid for seller in model.sellers.values()]) + 1
