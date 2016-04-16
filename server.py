@@ -7,7 +7,7 @@ from mesa.visualization.modules import CanvasGrid, ChartModule
 import importlib
 importlib.reload(main)
 
-color_buyer = "#ffffff" # grey
+color_buyer = "#f5f5f5" # very light grey
 color_seller = "#339900" # green
 color_WM = "#990000" # Wal-Mart red
 modelname = "LFABM"
@@ -40,7 +40,7 @@ def LFABM_portrayal(agent):
 
   elif type(agent) is main.Buyer:
     portrayal["Color"] = color_buyer
-    portrayal["r"] = 0.8
+    portrayal["r"] = 0.9
     portrayal["Layer"] = 1
 
   return portrayal

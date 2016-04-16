@@ -59,10 +59,11 @@ class Trade(Model):
   ini_buyers = 200
   ini_sellers = 50
   ini_cash = 100
-  num_w = 2 # Number of Wal-Mart
+  num_w = 1 # Number of Wal-Mart
   costs = 0.05 * ini_buyers
-  entryOn = 0  # Toggle Entry on and off (for quicker running)
-  csa = 1
+  entryOn = 1  # Toggle Entry on and off (for quicker running)
+  mktresearch = False
+  csa = 0
   csa_length = 26 # CSA contract length
 
   '''
@@ -88,7 +89,7 @@ class Trade(Model):
     prices = {}
     for i in range(ini_sellers):
       # prices[i] = 2
-      prices[i] = 0.5*np.random.rand() + 1.5 # 1.5 - 2.0
+      prices[i] = np.random.rand() + 1 # 1.0 - 2.0
     min_price = min(prices.values())
     for i in range(self.num_w):
       prices[i] = min_price*0.9
@@ -103,8 +104,8 @@ class Trade(Model):
     '''Create buyers'''
     for i in range(self.ini_buyers):
       # It seems coincidence in the same cell is allowed
-      x = random.randrange(self.width)
-      y = random.randrange(self.height)
+      x = np.random.randint(self.width)
+      y = np.random.randint(self.height)
 
       # Set arbitrarily enough income
       income = 10 * np.random.rand() + max(self.prices.values())
@@ -118,7 +119,7 @@ class Trade(Model):
       '''
       trust = {}
       for j in range(ini_sellers):
-        trust[j] = 2*np.random.rand()
+        trust[j] = np.random.rand()
       for j in range(self.num_w):
         trust[j] = 0 # 0 trust in Wal-Mart
       b = 1
@@ -130,8 +131,8 @@ class Trade(Model):
 
     '''Create sellers'''
     for i in range(self.ini_sellers):
-      x = random.randrange(self.width)
-      y = random.randrange(self.height)
+      x = np.random.randint(self.width)
+      y = np.random.randint(self.height)
 
       cash = self.ini_cash
       costs = self.costs
@@ -189,23 +190,22 @@ class Trade(Model):
 
     '''
     Determine the most profitable position and whether ot enter
-      Threshold: 10% greater than the fixed costs
+      Threshold: the fixed costs
     '''
-    if (self.entryOn and self.pi != [0] * (self.height * self.width)):
+    if (self.entryOn and self.mktresearch):
       opt = max(self.pi)
       opt_pos = self.pi.index(opt)
 
-      if opt >= self.costs * 1.1:
+      if opt >= self.costs:
         x = opt_pos // self.width
         y = opt_pos % self.width
-        cash = self.ini_cash # initial cash balance
-        # relative to ini_buyers, implying the required market share
+        cash = self.ini_cash
         costs = self.costs
         sid = max([seller.sid for seller in self.sellers.values()]) + 1
         price = np.mean([seller.price for seller in self.sellers.values()])
         w = False
         seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w)
-        self.sellers[sid] = seller # a dictionary key is an integer
+        self.sellers[sid] = seller
         self.grid.place_agent(seller, (x, y))
         self.schedule.add(seller)
         self.prices[sid] = price
@@ -213,6 +213,7 @@ class Trade(Model):
         if self.entryOn:
           print("\n**********\n", "Entry!!", "\n**********")
           print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
+        self.mktresearch = False
 
     '''
     Debug
@@ -294,8 +295,8 @@ class Buyer(Agent):
         No update for Wal-Mart
       '''
       lb = 1 # Lower bound
-      ub = 3 # Upper bound
-      up = 1.2 # Up rate
+      ub = 10 # Upper bound
+      up = 1.1 # Up rate
       down = 0.95 # Down rate
 
       for sid, seller in model.sellers.items():
@@ -314,8 +315,9 @@ class Buyer(Agent):
       Profitability & Entry
         x - row, y - column (the other way around!?)
         Allow a position already occupied by an existing seller
+        Conduct market research every now and then.
       '''
-      if (model.entryOn and model.cnt % 3 == 0):
+      if (model.entryOn and model.cnt % 8 == 0):
         cash = model.ini_cash
         costs = model.costs
         price = np.mean([seller.price for seller in model.sellers.values()])
@@ -325,9 +327,9 @@ class Buyer(Agent):
         for j in range(len(model.pi)):
           x = j // model.width
           y = j % model.width
-          seller = Seller(sid, model.grid, (x, y), True, cash, costs, price, w)
+          seller = Seller(sid, model.grid, (x,y), True, cash, costs, price, w)
           model.sellers[sid] = seller
-          self.trust[sid] = lb
+          self.trust[sid] = lb # Set at the lower bound
           sid_alive.append(sid)
           utils.append(util(sid))
           weights = utils / sum(utils)
@@ -339,6 +341,8 @@ class Buyer(Agent):
           # del self.trust[sid]
           del sid_alive[-1]
           del utils[-1]
+
+        model.mktresearch = True
 
 
 class Seller(Agent):
