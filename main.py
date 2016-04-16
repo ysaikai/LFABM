@@ -37,7 +37,6 @@ Profitability
   The profitability (pi) for each cell
   2-dimensional tuple is reduced into 1-dimensional.
   [0] - (0,0), [1] - (0,1),..., [width] - (1,0),... and so on.
-
 '''
 
 import numpy as np
@@ -64,7 +63,7 @@ class Trade(Model):
   costs = 0.05 * ini_buyers
   entryOn = 0  # Toggle Entry on and off (for quicker running)
   csa = 1
-  csa_t = 26 # CSA period
+  csa_length = 26 # CSA contract length
 
   '''
   Initialization
@@ -85,7 +84,7 @@ class Trade(Model):
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
-    self.cnt = 0
+    self.cnt = 0 # To count steps
     prices = {}
     for i in range(ini_sellers):
       # prices[i] = 2
@@ -103,15 +102,11 @@ class Trade(Model):
 
     '''Create buyers'''
     for i in range(self.ini_buyers):
-      '''
-      What happens if two pos coincide? Since it manages to run, I guess,
-      the grid module doesn't rule out such a senario. For now, leave it
-      as it is.
-      '''
+      # It seems coincidence in the same cell is allowed
       x = random.randrange(self.width)
       y = random.randrange(self.height)
 
-      '''income > max(price) to make every sellers affordable'''
+      # Set arbitrarily enough income
       income = 10 * np.random.rand() + max(self.prices.values())
       a = 1
       '''
@@ -126,7 +121,6 @@ class Trade(Model):
         trust[j] = 2*np.random.rand()
       for j in range(self.num_w):
         trust[j] = 0 # 0 trust in Wal-Mart
-      # b = 0.5*np.random.rand() # coefficient on distance
       b = 1
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
@@ -136,24 +130,16 @@ class Trade(Model):
 
     '''Create sellers'''
     for i in range(self.ini_sellers):
-      # the same concern of coincident positions as above
       x = random.randrange(self.width)
       y = random.randrange(self.height)
 
-      cash = self.ini_cash # initial cash balance
-      # relative to ini_buyers, implying the required market share
+      cash = self.ini_cash
       costs = self.costs
       price = self.prices[i]
       w = False
       if i < self.num_w: w = True
 
       seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
-      '''
-      To have instant access to seller attributes, create a list of seller
-      objects. If it turns out a waste of memory (esp. in a big simulation)
-      I guess we may loop the scheduler or the grid to access a specific
-      seller. But, then, it would be a waste of computation...
-      '''
       self.sellers[i] = seller # a dictionary key is an integer
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
@@ -243,27 +229,6 @@ class Trade(Model):
           t += buyer.trust[sid]
         t = int(t)
         print("{0:<5} {1:<9} {2:<6} {3:<6} {4:<7} {5:<7} {6:<8} {7:<7}".format(sid, str(obj.pos), str(obj.w), str(obj.csa), round(obj.price,2), obj.sales, round(obj.cash,2),t))
-
-        # print(obj.customers)
-
-
-# Not yet worked on
-  def run_model(self, step_count=200):
-    if self.verbose:
-      print('Initial number sellers: ',
-        self.schedule.get_type_count(Seller))
-      print('Initial number buyers: ',
-        self.schedule.get_type_count(Buyer))
-
-    for i in range(step_count):
-      self.step()
-
-    if self.verbose:
-      print('')
-      print('Final number sellers: ',
-        self.schedule.get_type_count(Seller))
-      print('Final number buyers: ',
-        self.schedule.get_type_count(Buyer))
 
 
 class Buyer(Agent):
@@ -422,7 +387,7 @@ class Seller(Agent):
         if (self.sales*self.price > self.costs*1.5 and self.csa == 0):
           for customer in self.customers[model.cnt]:
             model.buyers[customer].csa = True
-          self.cash += profit*(model.csa_t - 1)
+          self.cash += profit*(model.csa_length - 1)
           self.csa = True
           self.cnt_csa = 0
           self.csa_list = self.customers[model.cnt]
@@ -447,7 +412,7 @@ class Seller(Agent):
 
     if self.csa:
       self.cnt_csa += 1
-    if self.cnt_csa >= model.csa_t:
+    if self.cnt_csa >= model.csa_length:
       for customer in self.csa_list:
         model.buyers[customer].csa = False
       self.csa = False
