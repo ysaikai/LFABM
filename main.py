@@ -67,13 +67,6 @@ class Trade(Model):
   csa_length = 26 # CSA contract length
 
   '''
-  Initialization
-  '''
-  buyers = {} # Dictionary of buyer instances
-  sellers = {} # Dictionary of seller instances
-  pi = [0] * (height * width) # Profitability
-
-  '''
   Debug
   '''
   sellerDebug = 1  # Toggle for seller variable information
@@ -85,6 +78,10 @@ class Trade(Model):
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
+
+    '''
+    Initialization
+    '''
     self.cnt = 0 # To count steps
     prices = {}
     for i in range(ini_sellers):
@@ -94,6 +91,9 @@ class Trade(Model):
     for i in range(self.num_w):
       prices[i] = min_price*0.9
     self.prices = prices
+    self.buyers = {} # Dictionary of buyer instances
+    self.sellers = {} # Dictionary of seller instances
+    self.pi = [0] * (height * width) # Profitability
 
     self.schedule = RandomActivationByType(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
@@ -296,8 +296,8 @@ class Buyer(Agent):
       '''
       lb = 1 # Lower bound
       ub = 10 # Upper bound
-      up = 1.1 # Up rate
-      down = 0.95 # Down rate
+      up = 1.05 # Up rate
+      down = 0.9 # Down rate
 
       for sid, seller in model.sellers.items():
         if seller.w == False:
