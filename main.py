@@ -22,11 +22,6 @@ may not use a spatial grid.
 They are scattered across the scripts. It may be cleaner to specify
 all the initial parameter values in an external text file.
 
-[Price]
-To let buyers access the prices, define as a Trade class attribute
-instead of an individual seller's attribute.
-Wal-Mart has the lowest price, 90% of the local lowest
-
 [Entry]
 At each period, there's a random entry of a new seller
 Price: the average of the existing prices (so far, including Wal-Mart)
@@ -65,7 +60,6 @@ class Trade(Model):
   mktresearch = False
   csa = 0
   csa_length = 26 # CSA contract length
-
   '''
   Debug
   '''
@@ -78,6 +72,12 @@ class Trade(Model):
     self.width = width
     self.ini_buyers = ini_buyers
     self.ini_sellers = ini_sellers
+
+    self.schedule = RandomActivationByType(self)
+    self.grid = MultiGrid(self.height, self.width, torus=True)
+    self.datacollector = DataCollector(
+      {"Sellers": lambda m: m.schedule.get_type_count(Seller),
+      "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
 
     '''
     Initialization
@@ -95,28 +95,13 @@ class Trade(Model):
     self.sellers = {} # Dictionary of seller instances
     self.pi = [0] * (height * width) # Profitability
 
-    self.schedule = RandomActivationByType(self)
-    self.grid = MultiGrid(self.height, self.width, torus=True)
-    self.datacollector = DataCollector(
-      {"Sellers": lambda m: m.schedule.get_type_count(Seller),
-      "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
-
     '''Create buyers'''
     for i in range(self.ini_buyers):
       # It seems coincidence in the same cell is allowed
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      # Set arbitrarily enough income
-      income = 10 * np.random.rand() + max(self.prices.values())
       a = 1
-      '''
-      Trust
-        A vector of trust levels in the sellers
-        Trust encapsulates all the 'quality' information about each seller,
-        which helps a buyer make a decision. e.g. goods & service quality and
-        character.
-      '''
       trust = {}
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
@@ -124,7 +109,7 @@ class Trade(Model):
         trust[j] = 0 # 0 trust in Wal-Mart
       b = 1
 
-      buyer = Buyer(i, self.grid, (x, y), True, a, trust, income, b)
+      buyer = Buyer(i, self.grid, (x, y), True, a, trust, b)
       self.buyers[i] = buyer # Dictionary key is an integer
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
@@ -220,16 +205,16 @@ class Trade(Model):
       Show seller information
     '''
     if self.sellerDebug:
-      print("\nStep:", self.cnt)
+      print("\nPeriod:", self.cnt)
       print(len(self.sellers)-self.num_w, "local sellers")
-      print("{0:<5} {1:<9} {2:<6} {3:<6} {4:<7} {5:<7} {6:<8} {7:<7}".format("sid", "Cell", "W", "CSA", "Price", "Sales", "Cash", "Trust"))
+      print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format("sid", "Cell", "CSA", "Price", "Sales", "Cash", "Trust"))
       for obj in self.sellers.values():
         sid = obj.sid
         t = 0 # To calculate the cumulative trust
         for buyer in self.buyers.values():
           t += buyer.trust[sid]
         t = int(t)
-        print("{0:<5} {1:<9} {2:<6} {3:<6} {4:<7} {5:<7} {6:<8} {7:<7}".format(sid, str(obj.pos), str(obj.w), str(obj.csa), round(obj.price,2), obj.sales, round(obj.cash,2),t))
+        print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format(sid, str(obj.pos), str(obj.csa), round(obj.price,2), obj.sales, round(obj.cash,2),t))
 
 
 class Buyer(Agent):
@@ -237,17 +222,15 @@ class Buyer(Agent):
   bid: buyer unique id
   a: a coefficient on trust
   trust: a vector of trust levels in the producers
-  income: wealth level (for now, just set high enough)
   b: a coefficient on distance, i.e. local_affinity
   '''
-  def __init__(self, bid, grid, pos, moore, a, trust, income, b):
+  def __init__(self, bid, grid, pos, moore, a, trust, b):
     self.bid = bid
     self.grid = grid
     self.pos = pos
     self.moore = moore
     self.a = a
     self.trust = trust
-    self.income = income
     self.b = b
     self.csa = False
 
