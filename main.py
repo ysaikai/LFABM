@@ -43,6 +43,9 @@ from mesa.space import MultiGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
+import debug
+import csa
+
 
 class Trade(Model):
   verbose = False # Print-monitoring
@@ -55,13 +58,15 @@ class Trade(Model):
   ini_sellers = 50
   ini_cash = 100
   num_w = 1 # Number of Wal-Mart
+  trust_w = 0.5
   costs = 0.05 * ini_buyers
   entryOn = 0  # Toggle Entry on and off (for quicker running)
   mktresearch = False
   csa = 0
   csa_length = 26 # CSA contract length
+
   '''
-  Debug
+  Debugging
   '''
   sellerDebug = 1  # Toggle for seller variable information
   buyerDebug = 0   # Toggle for buyer variable information
@@ -79,9 +84,7 @@ class Trade(Model):
       {"Sellers": lambda m: m.schedule.get_type_count(Seller),
       "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
 
-    '''
-    Initialization
-    '''
+    '''Initialization'''
     self.cnt = 0 # To count steps
     prices = {}
     for i in range(ini_sellers):
@@ -106,7 +109,7 @@ class Trade(Model):
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
-        trust[j] = 0 # 0 trust in Wal-Mart
+        trust[j] = self.trust_w
       b = 1
 
       buyer = Buyer(i, self.grid, (x, y), True, a, trust, b)
@@ -154,27 +157,8 @@ class Trade(Model):
         self.schedule.get_type_count(Buyer)])
 
     '''
-    Debug
-      Display trust levels
-    '''
-    if self.buyerDebug:
-      print("\nBuyers trust levels Top3 (sid in brackets)")
-      print("{0:6} {1:9} {2:9} {3:9}".format("bid", "#1", "#2", "#3"))
-      for obj in self.buyers.values():
-        bid = obj.bid
-        tmp = list(obj.trust.values())
-        t1 = max(tmp)
-        sid1 = tmp.index(t1)
-        tmp.remove(t1)
-        t2 = max(tmp)
-        sid2 = tmp.index(t2)
-        tmp.remove(t2)
-        t3 = max(tmp)
-        sid3 = tmp.index(t3)
-        print("{bid:03d} {t1:5.2f}({sid1:02d}) {t2:5.2f}({sid2:02d}) {t3:5.2f}({sid3:02d})".format(bid=bid,t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
-
-    '''
-    Determine the most profitable position and whether ot enter
+    Entry
+      Determine the most profitable position and whether to enter
       Threshold: the fixed costs
     '''
     if (self.entryOn and self.mktresearch):
@@ -201,20 +185,14 @@ class Trade(Model):
         self.mktresearch = False
 
     '''
-    Debug
-      Show seller information
+    Debugging
     '''
+    '''Display trust levels'''
+    if self.buyerDebug:
+      debug.buyers(self.buyers)
+    '''Display seller information'''
     if self.sellerDebug:
-      print("\nPeriod:", self.cnt)
-      print(len(self.sellers)-self.num_w, "local sellers")
-      print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format("sid", "Cell", "CSA", "Price", "Sales", "Cash", "Trust"))
-      for obj in self.sellers.values():
-        sid = obj.sid
-        t = 0 # To calculate the cumulative trust
-        for buyer in self.buyers.values():
-          t += buyer.trust[sid]
-        t = int(t)
-        print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format(sid, str(obj.pos), str(obj.csa), round(obj.price,2), obj.sales, round(obj.cash,2),t))
+      debug.sellers(self.cnt, self.num_w, self.sellers, self.buyers)
 
 
 class Buyer(Agent):
