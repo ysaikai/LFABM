@@ -9,7 +9,7 @@ importlib.reload(main)
 
 color_buyer = "#f5f5f5" # very light grey
 color_seller = "#339900" # green
-color_seller_price = 0 # display seller price in their color
+price_color_on = 1 # display seller price in their color
 color_WM = "#990000" # Wal-Mart red
 modelname = "LFABM"
 
@@ -26,7 +26,7 @@ def LFABM_portrayal(agent):
   if type(agent) is main.Seller:
     if agent.w:
       portrayal["Color"] = color_WM
-    elif (color_seller_price):
+    elif (price_color_on):
       val = 255-int(255*(agent.price/2))
       price_color = '#'+str(val)+'FF'+str(val)   # Lighter = low price, darker = high price
       portrayal["Color"] = price_color
