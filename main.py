@@ -383,7 +383,7 @@ class Seller(Agent):
   obsRadius = 1              # How far seller can observe prices (in cell units)
   idealPremium = 0.50        # Premium above costs that reflects sellers ideal profits
 
-  k = 1 # Coefficient on embeddedness
+  k = 1 # Variable cost of embeddedness
 
   def __init__(self, sid, grid, pos, moore, cash, costs, price, w, e):
     self.sid = sid
@@ -399,6 +399,7 @@ class Seller(Agent):
     self.idealProfits = costs*self.idealPremium
     self.alive = True
     self.sales = 0 # Number of customers at the adjacent period
+    self.profits = 0
     self.csa = False
     self.cnt_csa = 0
     self.csa_list = []
@@ -407,8 +408,8 @@ class Seller(Agent):
   def step(self, model):
     # Cash balance
     if self.csa == False:
-      profit = self.sales*(self.price - self.k*self.e) - self.costs
-      self.cash += profit
+      self.profits = self.sales*(self.price - self.k*self.e) - self.costs
+      self.cash += self.profits
 
     # Insolvency (Wal-Mart is immortal)
     if (self.w == False and self.cash < 0):
@@ -423,7 +424,7 @@ class Seller(Agent):
         if (self.sales*self.price > self.costs*1.5 and self.csa == 0):
           for customer in self.customers[model.cnt]:
             model.buyers[customer].csa = True
-          self.cash += profit*(model.csa_length - 1)
+          self.cash += self.profits*(model.csa_length - 1)
           self.csa = True
           self.cnt_csa = 0
           self.csa_list = self.customers[model.cnt]
@@ -449,8 +450,7 @@ class Seller(Agent):
 
       ''' Price Adjustment Upwards'''
       # React if not walmart and sales were high (but below ideal revenue)
-      profits = self.price*self.sales-self.costs
-      if (self.csa == 0 and not self.w and np.random.rand() > 1 - profits/self.idealProfits):
+      if (self.csa == 0 and not self.w and np.random.rand() > 1 - self.profits/self.idealProfits):
         maxNeighborPrice = 0
         for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
           if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price > maxNeighborPrice):
