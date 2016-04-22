@@ -67,7 +67,7 @@ class Trade(Model):
   Entry mode
     0: No entry
     1: Full market research
-    2: Random
+    2: Whenever Avg cash balance > ini_cash with a random position
   '''
   entry = 0
   entryFrequency = 8
@@ -98,7 +98,7 @@ class Trade(Model):
 
     self.lb = 1 # Lower bound
     self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.03 # Up rate
+    self.up = 1.02 # Up rate
     self.down = 0.95 # Down rate
 
     prices = {}
@@ -125,7 +125,8 @@ class Trade(Model):
 
       α = 1
       trust = {}
-      β = 5*np.random.rand()
+      # β = 5*np.random.rand()
+      β = 3
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
@@ -216,7 +217,8 @@ class Trade(Model):
       costs = self.costs
       w = False
       price = np.mean([self.sellers[sid].price for sid in self.sid_alive])
-      e = np.random.choice([self.sellers[sid].e for sid in self.sid_alive])
+      # e = np.random.choice([self.sellers[sid].e for sid in self.sid_alive])
+      e = np.random.rand()
       sid = max([seller.sid for seller in self.sellers.values()]) + 1
       self.sid_alive.append(sid)
       seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w, e)
@@ -344,12 +346,13 @@ class Buyer(Agent):
         costs = model.costs
         price = np.mean([seller.price for seller in model.sellers.values()])
         w = False
+        e = np.random.rand()
         sid = max([seller.sid for seller in model.sellers.values()]) + 1
 
         for j in range(len(model.pi)):
           x = j // model.width
           y = j % model.width
-          seller = Seller(sid, model.grid, (x,y), True, cash, costs, price, w)
+          seller = Seller(sid, model.grid, (x,y), True, cash, costs, price, w, e)
           model.sellers[sid] = seller
           self.trust[sid] = lb # Set at the lower bound
           sid_alive.append(sid)
