@@ -44,32 +44,37 @@ from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
 import debug
-import csa
+# import csa
+# import embeddedness as ebd
 
 
 class Trade(Model):
   verbose = False # Print-monitoring
-  '''
-  Parameters
-  '''
+
+  '''Parameters'''
   height = 20
   width = 20
-  ini_buyers = 200
+  ini_buyers = 300
   ini_sellers = 50
   ini_cash = 100
   num_w = 1 # Number of Wal-Mart
   trust_w = 0.5
-  costs = 0.05 * ini_buyers
-  entryOn = 0  # Toggle Entry on and off (for quicker running)
+  costs = 0.03 * ini_buyers
   mktresearch = False
   csa = 0
   csa_length = 26 # CSA contract length
+  '''
+  Entry mode
+    0: No entry
+    1: Full market research
+    2: Random
+  '''
+  entry = 0
+  entryFrequency = 8
 
-  '''
-  Debugging
-  '''
-  sellerDebug = 1  # Toggle for seller variable information
-  buyerDebug = 0   # Toggle for buyer variable information
+  '''Debugging'''
+  sellerDebug = True
+  buyerDebug = False
 
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
@@ -85,7 +90,17 @@ class Trade(Model):
       "Buyers": lambda m: m.schedule.get_type_count(Buyer)})
 
     '''Initialization'''
-    self.cnt = 0 # To count steps
+    self.cnt = 0 # Period counter
+    self.buyers = {} # Dictionary of buyer instances
+    self.sellers = {} # Dictionary of seller instances
+    self.sid_alive = []
+    self.pi = [0] * (height * width) # Profitability
+
+    self.lb = 1 # Lower bound
+    self.ub = 10000 # Upper bound (in effect, unbounded)
+    self.up = 1.03 # Up rate
+    self.down = 0.95 # Down rate
+
     prices = {}
     for i in range(ini_sellers):
       # prices[i] = 2
@@ -94,9 +109,13 @@ class Trade(Model):
     for i in range(self.num_w):
       prices[i] = min_price*0.9
     self.prices = prices
-    self.buyers = {} # Dictionary of buyer instances
-    self.sellers = {} # Dictionary of seller instances
-    self.pi = [0] * (height * width) # Profitability
+
+    e = {} # Embeddedness
+    for i in range(ini_sellers):
+      e[i] = np.random.rand()
+    for i in range(self.num_w):
+      e[i] = 0
+    self.e = e
 
     '''Create buyers'''
     for i in range(self.ini_buyers):
@@ -104,15 +123,16 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      a = 1
+      α = 1
       trust = {}
+      β = 5*np.random.rand()
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
         trust[j] = self.trust_w
-      b = 1
+      γ = 1
 
-      buyer = Buyer(i, self.grid, (x, y), True, a, trust, b)
+      buyer = Buyer(i, self.grid, (x, y), True, α, trust, β, γ)
       self.buyers[i] = buyer # Dictionary key is an integer
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
@@ -126,29 +146,96 @@ class Trade(Model):
       costs = self.costs
       price = self.prices[i]
       w = False
-      if i < self.num_w: w = True
+      if i < self.num_w:
+        w = True
+      e = self.e[i]
 
-      seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w)
-      self.sellers[i] = seller # a dictionary key is an integer
+      seller = Seller(i, self.grid, (x, y), True, cash, costs, price, w, e)
+      self.sellers[i] = seller
       self.grid.place_agent(seller, (x, y))
       self.schedule.add(seller)
 
     self.running = True
 
   def step(self):
+    '''Initialization'''
     self.cnt += 1
+    self.sid_alive = [] # Excluding Wal-Mart
 
-    '''Initialize the profitability'''
-    self.pi = [0] * (self.height * self.width)
+    for sid, seller in self.sellers.items():
+      '''Adjacent sales'''
+      seller.sales = 0
 
-    '''initialize the adjacent sales'''
-    for obj in self.sellers.values():
-      obj.sales = 0
+      '''Customer list'''
+      seller.customers[self.cnt] = []
 
-    '''Add customer list'''
-    for obj in self.sellers.values():
-      obj.customers[self.cnt] = []
+      '''A list of living sellers (excluding Wal-Mart)'''
+      if (seller.alive and seller.w == False):
+        self.sid_alive.append(sid)
+    '''
+    Entry=1
+      Initialize the profitability vector
+    Entry=2
+      Calculate the average cash balance (scalar)
+    '''
+    if self.entry == 1:
+      self.pi = [0] * (self.height * self.width)
+    elif self.entry == 2:
+      total_cash = 0
+      cnt_seller = 0
+      total_cash = sum([self.sellers[sid].cash for sid in self.sid_alive])
+      self.avg_cash = total_cash / len(self.sid_alive)
 
+
+    '''
+    Entry
+      Entry=1
+        Determine the most profitable position and whether to enter
+        Threshold: the fixed costs
+      Entry=2
+        Enter whenever Avg cash balance > ini_cash
+    '''
+    entry_on = False
+
+    if (self.entry == 1 and self.mktresearch):
+      opt = max(self.pi)
+      opt_pos = self.pi.index(opt)
+
+      if opt >= self.costs:
+        x = opt_pos // self.width
+        y = opt_pos % self.width
+        entry_on = True
+
+    elif (self.entry == 2 and self.avg_cash > self.ini_cash):
+      x = np.random.randint(self.width)
+      y = np.random.randint(self.height)
+      entry_on = True
+
+    if entry_on:
+      cash = self.ini_cash
+      costs = self.costs
+      w = False
+      price = np.mean([self.sellers[sid].price for sid in self.sid_alive])
+      e = np.random.choice([self.sellers[sid].e for sid in self.sid_alive])
+      sid = max([seller.sid for seller in self.sellers.values()]) + 1
+      self.sid_alive.append(sid)
+      seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w, e)
+      self.sellers[sid] = seller
+      self.sellers[sid].customers[self.cnt] = []
+      for buyer in self.buyers.values():
+        buyer.trust[sid] = self.lb
+      self.grid.place_agent(seller, (x, y))
+      self.schedule.add(seller)
+      self.prices[sid] = price
+
+      if self.entry == 1:
+        print("\n**********\n", "Entry!!", "\n**********")
+        print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
+
+      self.mktresearch = False
+
+
+    '''Move'''
     self.schedule.step()
     self.datacollector.collect(self)
     if self.verbose:
@@ -156,33 +243,6 @@ class Trade(Model):
         self.schedule.get_type_count(Seller),
         self.schedule.get_type_count(Buyer)])
 
-    '''
-    Entry
-      Determine the most profitable position and whether to enter
-      Threshold: the fixed costs
-    '''
-    if (self.entryOn and self.mktresearch):
-      opt = max(self.pi)
-      opt_pos = self.pi.index(opt)
-
-      if opt >= self.costs:
-        x = opt_pos // self.width
-        y = opt_pos % self.width
-        cash = self.ini_cash
-        costs = self.costs
-        sid = max([seller.sid for seller in self.sellers.values()]) + 1
-        price = np.mean([seller.price for seller in self.sellers.values()])
-        w = False
-        seller = Seller(sid, self.grid, (x, y), True, cash, costs, price, w)
-        self.sellers[sid] = seller
-        self.grid.place_agent(seller, (x, y))
-        self.schedule.add(seller)
-        self.prices[sid] = price
-
-        if self.entryOn:
-          print("\n**********\n", "Entry!!", "\n**********")
-          print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
-        self.mktresearch = False
 
     '''
     Debugging
@@ -198,24 +258,26 @@ class Trade(Model):
 class Buyer(Agent):
   '''
   bid: buyer unique id
-  a: a coefficient on trust
-  trust: a vector of trust levels in the producers
-  b: a coefficient on distance, i.e. local_affinity
+  α: coefficient on trust
+  trust: vector of trust levels in the producers
+  β: coefficient on embeddedness
+  γ: coefficient on distance
   '''
-  def __init__(self, bid, grid, pos, moore, a, trust, b):
+  def __init__(self, bid, grid, pos, moore, α, trust, β, γ):
     self.bid = bid
     self.grid = grid
     self.pos = pos
     self.moore = moore
-    self.a = a
+    self.α = α
     self.trust = trust
-    self.b = b
+    self.β = β
+    self.γ = γ
     self.csa = False
 
   def step(self, model):
     def util(i):
       '''
-      utility = a*trust - b*d - p
+      utility = α*trust - γ*d - p
       model.prices: the price vector with sid as its indices
       model.sellers[sid]: a seller object, containing attribute pos=[x][y]
       to calculate the distance from her
@@ -223,14 +285,13 @@ class Buyer(Agent):
       Since utils are used to calculate probability weights, they should be
       positive. So, they are exponentiated.
       '''
-      a = self.a
       trust = self.trust[i]
+      e = model.sellers[i].e
       pos = model.sellers[i].pos
       d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
-      b = self.b
       p = model.sellers[i].price
 
-      return np.exp(a*trust - b*d - p)
+      return np.exp(self.α*trust + self.β*e - self.γ*d - p)
 
     # A bad coding, CSA decision covers too wide. Pardon me for awhile!
     if self.csa == False:
@@ -255,10 +316,10 @@ class Buyer(Agent):
         Building stops at ub, and forgetting stops at lb
         No update for Wal-Mart
       '''
-      lb = 1 # Lower bound
-      ub = 10 # Upper bound
-      up = 1.05 # Up rate
-      down = 0.9 # Down rate
+      lb = model.lb # Lower bound
+      ub = model.ub # Upper bound (in effect, unbounded)
+      up = model.up # Up rate
+      down = model.down # Down rate
 
       for sid, seller in model.sellers.items():
         if seller.w == False:
@@ -278,7 +339,7 @@ class Buyer(Agent):
         Allow a position already occupied by an existing seller
         Conduct market research every now and then.
       '''
-      if (model.entryOn and model.cnt % 8 == 0):
+      if (model.entry == 1 and model.cnt % model.entryFrequency == 0):
         cash = model.ini_cash
         costs = model.costs
         price = np.mean([seller.price for seller in model.sellers.values()])
@@ -319,7 +380,9 @@ class Seller(Agent):
   obsRadius = 1              # How far seller can observe prices (in cell units)
   idealPremium = 0.50        # Premium above costs that reflects sellers ideal profits
 
-  def __init__(self, sid, grid, pos, moore, cash, costs, price, w):
+  k = 1 # Coefficient on embeddedness
+
+  def __init__(self, sid, grid, pos, moore, cash, costs, price, w, e):
     self.sid = sid
     self.grid = grid
     self.pos = pos
@@ -328,7 +391,9 @@ class Seller(Agent):
     self.costs = costs
     self.price = price
     self.w = w
-    self.idealProfits = costs*Seller.idealPremium
+    self.e = e
+    # self.idealProfits = costs*Seller.idealPremium
+    self.idealProfits = costs*self.idealPremium
     self.alive = True
     self.sales = 0 # Number of customers at the adjacent period
     self.csa = False
@@ -339,7 +404,7 @@ class Seller(Agent):
   def step(self, model):
     # Cash balance
     if self.csa == False:
-      profit = self.sales*self.price - self.costs
+      profit = self.sales*(self.price - self.k*self.e) - self.costs
       self.cash += profit
 
     # Insolvency (Wal-Mart is immortal)
