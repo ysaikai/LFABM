@@ -293,16 +293,16 @@ class Buyer(Agent):
       d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
       p = model.sellers[i].price
 
-      # return np.exp(self.α*trust + self.β*e - self.γ*d - p)
       return self.α*trust + self.β*e - self.γ*d - p
 
     if self.csa == False:
       '''
       Buyer chooses a seller at weighted random.
         1. Calculate raw utils
-        2. Scale them -1 to 1 (ie max(utils)=1 and min(utils)=-1)
+        2. Scale them into u' = (u-min(u))*κ/(max(u)-min(u)) - δ
+          κ: the range, δ: min(u'), so max(u') = min(u') + κ
         3. Exponentiate them
-        4. Weights = relative sizes of them
+        4. Weights = Relative sizes of them
       '''
       sid_alive = []
       utils = []
@@ -310,7 +310,7 @@ class Buyer(Agent):
         if seller.alive:
           sid_alive.append(sid)
           utils.append(util(sid))
-      # Transform into -1 to 1
+      # Transform into an appropriate interval
       Δ = max(utils) - min(utils)
       utils = np.array([(util - min(utils))*15/Δ - 5 for util in utils])
       # Exponentiate
