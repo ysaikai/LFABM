@@ -98,8 +98,8 @@ class Trade(Model):
 
     self.lb = 1 # Lower bound
     self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.1 # Up rate
-    self.down = 0.99 # Down rate
+    self.up = 1.03 # Up rate
+    self.down = 0.95 # Down rate
 
     prices = {}
     for i in range(ini_sellers):
@@ -123,15 +123,15 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      α = 10
+      α = 3
       trust = {}
       # β = 5*np.random.rand()
-      β = 5
+      β = 3
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
         trust[j] = self.trust_w
-      γ = 5
+      γ = 2
 
       buyer = Buyer(i, self.grid, (x, y), True, α, trust, β, γ)
       self.buyers[i] = buyer # Dictionary key is an integer
@@ -298,7 +298,11 @@ class Buyer(Agent):
 
     if self.csa == False:
       '''
-      Buyer chooses a seller at weighted random. Weights are normalized utils.
+      Buyer chooses a seller at weighted random.
+        1. Calculate raw utils
+        2. Scale them -1 to 1 (ie max(utils)=1 and min(utils)=-1)
+        3. Exponentiate them
+        4. Weights = relative sizes of them
       '''
       sid_alive = []
       utils = []
@@ -306,8 +310,14 @@ class Buyer(Agent):
         if seller.alive:
           sid_alive.append(sid)
           utils.append(util(sid))
-      utils = np.array([util - min(utils) for util in utils])
+      # Transform into -1 to 1
+      Δ = max(utils) - min(utils)
+      utils = np.array([(util - min(utils))*15/Δ - 5 for util in utils])
+      # Exponentiate
+      utils = np.exp(utils)
+      # print(np.sort(utils))
       weights = utils / np.sum(utils)
+      # print(np.sort(weights))
       choice = np.random.choice(sid_alive, p=weights)
       model.sellers[choice].sales += 1
       model.sellers[choice].customers[model.cnt].append(self.bid)
