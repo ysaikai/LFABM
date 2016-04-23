@@ -98,8 +98,8 @@ class Trade(Model):
 
     self.lb = 1 # Lower bound
     self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.02 # Up rate
-    self.down = 0.95 # Down rate
+    self.up = 1.1 # Up rate
+    self.down = 0.99 # Down rate
 
     prices = {}
     for i in range(ini_sellers):
@@ -293,9 +293,9 @@ class Buyer(Agent):
       d = abs(pos[0] - self.pos[0]) + abs(pos[1] - self.pos[1])
       p = model.sellers[i].price
 
-      return np.exp(self.α*trust + self.β*e - self.γ*d - p)
+      # return np.exp(self.α*trust + self.β*e - self.γ*d - p)
+      return self.α*trust + self.β*e - self.γ*d - p
 
-    # A bad coding, CSA decision covers too wide. Pardon me for awhile!
     if self.csa == False:
       '''
       Buyer chooses a seller at weighted random. Weights are normalized utils.
@@ -306,8 +306,8 @@ class Buyer(Agent):
         if seller.alive:
           sid_alive.append(sid)
           utils.append(util(sid))
-
-      weights = utils / sum(utils)
+      utils = np.array([util - min(utils) for util in utils])
+      weights = utils / np.sum(utils)
       choice = np.random.choice(sid_alive, p=weights)
       model.sellers[choice].sales += 1
       model.sellers[choice].customers[model.cnt].append(self.bid)
@@ -395,8 +395,7 @@ class Seller(Agent):
     self.price = price
     self.w = w
     self.e = e
-    # self.idealProfits = costs*Seller.idealPremium
-    self.idealProfits = costs*self.idealPremium
+    self.idealProfits = costs*Seller.idealPremium
     self.alive = True
     self.sales = 0 # Number of customers at the adjacent period
     self.profits = 0

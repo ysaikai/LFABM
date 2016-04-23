@@ -1,5 +1,4 @@
 
-
 '''
 Display trust levels
 '''
@@ -26,8 +25,7 @@ Show seller information
 def sellers(cnt, num_w, sellers, buyers):
   print("\nPeriod:", cnt)
   print(len(sellers)-num_w, "local sellers")
-  # print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format("sid", "Cell", "CSA", "Price", "Sales", "Cash", "Trust"))
-  print("{0:^4} {1:^9}  {2:^4} {3:^7} {4:>6} {5:>7} {6:>7} {7:>8}".format("sid", "Cell", "Ebd", "Price", "Sales", "Profits", "Cash", "AvgTst"))
+  print("{0:^4} {1:^9}  {2:^4} {3:>6} {4:>6} {5:>8} {6:>7} {7:>8}".format("sid", "Cell", "Ebd", "Price", "Sales", "Profits", "Cash", "AvgTst"))
   for obj in sellers.values():
     sid = obj.sid
     # Calculate the average trust of the customers at the current period
@@ -37,5 +35,4 @@ def sellers(cnt, num_w, sellers, buyers):
       τ += buyers[customer].trust[sid]
     if τ > 0:
       avg_τ = τ / len(obj.customers[cnt])
-    # print("{0:<5} {1:<9} {2:<6} {3:<7} {4:<7} {5:<8} {6:<7}".format(sid, str(obj.pos), str(obj.csa), round(obj.price,2), obj.sales, round(obj.cash,2),t))
-    print("{0:>4} {1:>9}  {2:<4} {3:>7} {4:>6} {5:>7} {6:>7} {7:>8}".format(sid, str(obj.pos), round(obj.e,2), round(obj.price,2), obj.sales, round(obj.profits,2), int(obj.cash), round(avg_τ,1)))
+    print("{0:>4} {1:>9}  {2:<4} {3:>6.2f} {4:>6} {5:>8} {6:>7} {7:>8.2f}".format(sid, str(obj.pos), round(obj.e,2), obj.price, obj.sales, round(obj.profits,2), int(obj.cash), avg_τ))
