@@ -75,6 +75,7 @@ class Trade(Model):
   '''Debugging'''
   sellerDebug = True
   buyerDebug = False
+  utilweightDebug = True
 
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
@@ -315,14 +316,17 @@ class Buyer(Agent):
       utils = np.array([(u - min(utils))*15/Δ - 5 for u in utils])
       # Exponentiate
       utils = np.exp(utils)
-      print("\nexp() - bid:", self.bid)
-      print(''.join(["{:.2f} ".format(x) for x in np.sort(utils)]))
+      # print("\nexp() - bid:", self.bid)
+      # print(''.join(["{:.2f} ".format(x) for x in np.sort(utils)]))
       weights = utils / np.sum(utils)
-      print("\nweights - bid:", self.bid)
-      print(''.join(["{:.2f} ".format(x) for x in np.sort(weights)]))
+      # print("\nweights - bid:", self.bid)
+      # print(''.join(["{:.2f} ".format(x) for x in np.sort(weights)]))
       choice = np.random.choice(sid_alive, p=weights)
       model.sellers[choice].sales += 1
       model.sellers[choice].customers[model.cnt].append(self.bid)
+
+      if model.utilweightDebug:
+        debug.util_weight(self.bid, utils, weights)
 
       '''
       Update the trust

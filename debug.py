@@ -1,3 +1,4 @@
+import numpy as np
 
 '''
 Display trust levels
@@ -36,3 +37,13 @@ def sellers(cnt, num_w, sellers, buyers):
     if τ > 0:
       avg_τ = τ / len(obj.customers[cnt])
     print("{0:>4} {1:>9}  {2:>4.2f} {3:>6.2f} {4:>6} {5:>8.2f} {6:>7.0f} {7:>8.2f}".format(sid, str(obj.pos), obj.e, obj.price, obj.sales, obj.profits, obj.cash, avg_τ))
+
+'''
+exp(util) - weight
+'''
+def util_weight(bid, utils, weights):
+  print("\nexp() - bid:", bid)
+  print(''.join(["{:.2f} ".format(x) for x in utils]))
+  weights = utils / np.sum(utils)
+  print("\nweights - bid:", bid)
+  print(''.join(["{:.2f} ".format(x) for x in weights]))
