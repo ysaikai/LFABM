@@ -43,7 +43,7 @@ exp(util) - weight
 '''
 def util_weight(bid, utils, weights):
   print("\nexp() - bid:", bid)
-  print(''.join(["{:.2f} ".format(x) for x in utils]))
+  print(''.join(["{:.2f} ".format(x) for x in np.sort(utils)]))
   weights = utils / np.sum(utils)
   print("\nweights - bid:", bid)
-  print(''.join(["{:.2f} ".format(x) for x in weights]))
+  print(''.join(["{:.2f} ".format(x) for x in np.sort(weights)]))
