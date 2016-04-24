@@ -312,12 +312,14 @@ class Buyer(Agent):
           utils.append(util(sid))
       # Transform into an appropriate interval
       Δ = max(utils) - min(utils)
-      utils = np.array([(util - min(utils))*15/Δ - 5 for util in utils])
+      utils = np.array([(u - min(utils))*15/Δ - 5 for u in utils])
       # Exponentiate
       utils = np.exp(utils)
-      # print(np.sort(utils))
+      print("\nexp() - bid:", self.bid)
+      print(''.join(["{:.2f} ".format(x) for x in np.sort(utils)]))
       weights = utils / np.sum(utils)
-      # print(np.sort(weights))
+      print("\nweights - bid:", self.bid)
+      print(''.join(["{:.2f} ".format(x) for x in np.sort(weights)]))
       choice = np.random.choice(sid_alive, p=weights)
       model.sellers[choice].sales += 1
       model.sellers[choice].customers[model.cnt].append(self.bid)
