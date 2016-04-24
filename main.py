@@ -75,7 +75,7 @@ class Trade(Model):
   '''Debugging'''
   sellerDebug = True
   buyerDebug = False
-  utilweightDebug = True
+  utilweightDebug = 0
 
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
@@ -99,8 +99,8 @@ class Trade(Model):
 
     self.lb = 1 # Lower bound
     self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.03 # Up rate
-    self.down = 0.95 # Down rate
+    self.up = 1.05 # Up rate
+    self.down = 0.99 # Down rate
 
     prices = {}
     for i in range(ini_sellers):
@@ -113,7 +113,7 @@ class Trade(Model):
 
     e = {} # Embeddedness
     for i in range(ini_sellers):
-      e[i] = np.random.rand()
+      e[i] = 0.8*np.random.rand() + 0.2 # 0.2 - 1.0
     for i in range(self.num_w):
       e[i] = 0
     self.e = e
@@ -124,7 +124,7 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      α = 3
+      α = 1
       trust = {}
       # β = 5*np.random.rand()
       β = 3
@@ -132,7 +132,7 @@ class Trade(Model):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
         trust[j] = self.trust_w
-      γ = 2
+      γ = 1
 
       buyer = Buyer(i, self.grid, (x, y), True, α, trust, β, γ)
       self.buyers[i] = buyer # Dictionary key is an integer
@@ -316,35 +316,37 @@ class Buyer(Agent):
       utils = np.array([(u - min(utils))*15/Δ - 5 for u in utils])
       # Exponentiate
       utils = np.exp(utils)
-      # print("\nexp() - bid:", self.bid)
-      # print(''.join(["{:.2f} ".format(x) for x in np.sort(utils)]))
       weights = utils / np.sum(utils)
-      # print("\nweights - bid:", self.bid)
-      # print(''.join(["{:.2f} ".format(x) for x in np.sort(weights)]))
       choice = np.random.choice(sid_alive, p=weights)
       model.sellers[choice].sales += 1
       model.sellers[choice].customers[model.cnt].append(self.bid)
 
+      # Debugging
       if model.utilweightDebug:
         debug.util_weight(self.bid, utils, weights)
 
       '''
       Update the trust
-        Up on each purchase and down without purchase (forgetting)
-        Building stops at ub, and forgetting stops at lb
+        'up' reflects good experience with a seller. So, without a random
+        negative shock (eg misbehavior), it only increases on each purchase.
+        'down' reflects gradual fogetting without purchase and interaction.
+        The more embedded a seller, the greater and lower chance of up and
+        down respectively. Recall e∈(0,1).
         No update for Wal-Mart
       '''
       lb = model.lb # Lower bound
-      ub = model.ub # Upper bound (in effect, unbounded)
+      ub = model.ub # Upper bound
       up = model.up # Up rate
       down = model.down # Down rate
 
       for sid, seller in model.sellers.items():
         if seller.w == False:
+          up_chance = (np.random.rand() < (0.5 + seller.e/2))
+          # up_chance = 1
           if sid == choice:
-            self.trust[sid] = self.trust[sid] * up
+            self.trust[sid] = self.trust[sid] * (up * up_chance)
           else:
-            self.trust[sid] = self.trust[sid] * down
+            self.trust[sid] = self.trust[sid] * (down * (1-up_chance))
 
           if self.trust[sid] > ub:
             self.trust[sid] = ub
