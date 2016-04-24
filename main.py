@@ -124,7 +124,7 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      α = 1
+      α = 2
       trust = {}
       # β = 5*np.random.rand()
       β = 3
@@ -401,7 +401,7 @@ class Seller(Agent):
   obsRadius = 1              # How far seller can observe prices (in cell units)
   idealPremium = 0.50        # Premium above costs that reflects sellers ideal profits
 
-  k = 10 # Variable cost of embeddedness
+  κ = 15
 
   def __init__(self, sid, grid, pos, moore, cash, costs, price, w, e):
     self.sid = sid
@@ -425,8 +425,8 @@ class Seller(Agent):
   def step(self, model):
     # Cash balance
     if self.csa == False:
-      # self.profits = self.sales*(self.price - self.k*self.e) - self.costs
-      self.profits = self.sales*(self.price) - self.costs - self.k*self.e
+      # self.profits = self.sales*(self.price - self.κ*self.e) - self.costs
+      self.profits = self.sales*(self.price) - self.costs - self.κ*self.e
       self.cash += self.profits
 
     # Insolvency (Wal-Mart is immortal)
