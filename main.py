@@ -59,7 +59,7 @@ class Trade(Model):
   ini_cash = 100
   num_w = 1 # Number of Wal-Mart
   trust_w = 0.5
-  costs = 0.03 * ini_buyers
+  costs = 0.02 * ini_buyers
   mktresearch = False
   csa = 0
   csa_length = 26 # CSA contract length
@@ -99,7 +99,7 @@ class Trade(Model):
 
     self.lb = 1 # Lower bound
     self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.05 # Up rate
+    self.up = 1.03 # Up rate
     self.down = 0.99 # Down rate
 
     prices = {}
@@ -126,8 +126,7 @@ class Trade(Model):
 
       α = 2
       trust = {}
-      # β = 5*np.random.rand()
-      β = 3
+      β = 5*np.random.rand()
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
@@ -167,27 +166,21 @@ class Trade(Model):
     for sid, seller in self.sellers.items():
       '''Adjacent sales'''
       seller.sales = 0
-
       '''Customer list'''
       seller.customers[self.cnt] = []
-
       '''A list of living sellers (excluding Wal-Mart)'''
       if (seller.alive and seller.w == False):
         self.sid_alive.append(sid)
-    '''
-    Entry=1
-      Initialize the profitability vector
-    Entry=2
-      Calculate the average cash balance (scalar)
-    '''
+    # For entry
     if self.entry == 1:
+      # Initialize the profitability vector
       self.pi = [0] * (self.height * self.width)
     elif self.entry == 2:
+      # Calculate the average cash balance (scalar)
       total_cash = 0
       cnt_seller = 0
       total_cash = sum([self.sellers[sid].cash for sid in self.sid_alive])
       self.avg_cash = total_cash / len(self.sid_alive)
-
 
     '''
     Entry
@@ -237,7 +230,6 @@ class Trade(Model):
 
       self.mktresearch = False
 
-
     '''Move'''
     self.schedule.step()
     self.datacollector.collect(self)
@@ -245,7 +237,6 @@ class Trade(Model):
       print([self.schedule.time,
         self.schedule.get_type_count(Seller),
         self.schedule.get_type_count(Buyer)])
-
 
     '''
     Debugging
@@ -280,13 +271,9 @@ class Buyer(Agent):
   def step(self, model):
     def util(i):
       '''
-      utility = α*trust - γ*d - p
-      model.prices: the price vector with sid as its indices
+      util = α*trust + β*e - γ*d - p
       model.sellers[sid]: a seller object, containing attribute pos=[x][y]
       to calculate the distance from her
-
-      Since utils are used to calculate probability weights, they should be
-      positive. So, they are exponentiated.
       '''
       trust = self.trust[i]
       e = model.sellers[i].e
@@ -298,7 +285,7 @@ class Buyer(Agent):
 
     if self.csa == False:
       '''
-      Buyer chooses a seller at weighted random.
+      Buyer chooses a seller at weighted random. Weights must be non-negative.
         1. Calculate raw utils
         2. Scale them into u' = (u-min(u))*κ/(max(u)-min(u)) - δ
           κ: the range, δ: min(u'), so max(u') = min(u') + κ
@@ -401,7 +388,7 @@ class Seller(Agent):
   obsRadius = 1              # How far seller can observe prices (in cell units)
   idealPremium = 0.50        # Premium above costs that reflects sellers ideal profits
 
-  κ = 15
+  κ = 10
 
   def __init__(self, sid, grid, pos, moore, cash, costs, price, w, e):
     self.sid = sid
