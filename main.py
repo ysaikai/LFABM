@@ -487,6 +487,7 @@ class Seller(Agent):
           self.sales = len(self.csa_list)
           self.alive = False # Temporarily disappears from buyers' eyes
 
+      new_Price = self.price
       if (self.csa == 0 and not self.w and self.profits<0 and np.random.rand() > self.price*self.sales/self.costs):
         ''' Price Adjustment Downwards'''
         # React if not walmart and sales were too low (ie didn't cover all the costs)
