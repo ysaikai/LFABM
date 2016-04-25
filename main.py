@@ -304,6 +304,7 @@ class Buyer(Agent):
           utils.append(util(sid))
       # Transform into an appropriate interval
       Δ = max(utils) - min(utils)
+      if (Δ = 0): Δ=1
       utils = np.array([(u - min(utils))*15/Δ - 5 for u in utils])
       # Exponentiate
       utils = np.exp(utils)
