@@ -67,10 +67,12 @@ class Trade(Model):
   Entry mode
     0: No entry
     1: Full market research
-    2: Whenever Avg cash balance > ini_cash with a random position
+    2: Whenever Avg cash balance > entryThreshhold with a random position
+    3: Whenever Max cash balance > entryThreshhold enter nearby that position
   '''
-  entry = 0
+  entry = 3
   entryFrequency = 8
+  entryThreshhold = 10*ini_cash
 
   '''Debugging'''
   sellerDebug = True
@@ -185,6 +187,16 @@ class Trade(Model):
       cnt_seller = 0
       total_cash = sum([self.sellers[sid].cash for sid in self.sid_alive])
       self.avg_cash = total_cash / len(self.sid_alive)
+    elif self.entry == 3:
+      # Calculate the max cash balance (scalar)
+      cash_bals = [self.sellers[sid].cash for sid in self.sid_alive]
+      max_cash = max(cash_bals)
+      max_sid = self.sid_alive[cash_bals.index(max_cash)]
+      max_x = self.sellers[max_sid].pos[0]
+      max_y = self.sellers[max_sid].pos[1]
+      print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
+      ## Need to check aeg of nearby sellers, new firm will not enter if a new firm already entered nearby
+      ## Still need to implement this
 
     '''
     Entry
@@ -192,7 +204,10 @@ class Trade(Model):
         Determine the most profitable position and whether to enter
         Threshold: the fixed costs
       Entry=2
-        Enter whenever Avg cash balance > ini_cash
+        Enter whenever Avg cash balance > entryThreshhold
+      Entry=3
+        Enter whenever max cash balance > entryThreshhold
+        Enters within 3 units of the seller with max cash balance
     '''
     entry_on = False
 
@@ -205,9 +220,14 @@ class Trade(Model):
         y = opt_pos % self.width
         entry_on = True
 
-    elif (self.entry == 2 and self.avg_cash > self.ini_cash):
+    elif (self.entry == 2 and self.avg_cash > self.entryThreshhold):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
+      entry_on = True
+
+    elif (self.entry == 3 and max_cash > self.entryThreshhold):
+      x = max_x + 1 #np.random.randint(self.width)
+      y = max_y + 1 #np.random.randint(self.height)
       entry_on = True
 
     if entry_on:
@@ -228,7 +248,7 @@ class Trade(Model):
       self.schedule.add(seller)
       self.prices[sid] = price
 
-      if self.entry == 1:
+      if self.entry >= 1:
         print("\n**********\n", "Entry!!", "\n**********")
         print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
 
