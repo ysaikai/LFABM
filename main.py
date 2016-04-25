@@ -61,7 +61,7 @@ class Trade(Model):
   trust_w = 0.5
   costs = 0.02 * ini_buyers
   mktresearch = False
-  csa = 1
+  csa = 0
   csa_length = 26 # CSA contract length
   '''
   Entry mode
@@ -391,7 +391,7 @@ class Seller(Agent):
   priceAdjustDown = 0.95     # Percent they reduce price (in absence of neighbors)
   priceAdjustUp = 1.10       # Percent they increase price (in absence of neighbors)
   obsRadius = 1              # How far seller can observe prices (in cell units)
-  idealPremium = 0.50        # Premium above costs that reflects sellers ideal profits
+  idealPremium = 1#.50        # Premium above costs that reflects sellers ideal profits
 
   κ = 10
 
@@ -406,6 +406,8 @@ class Seller(Agent):
     self.w = w
     self.e = e
     self.idealProfits = costs*Seller.idealPremium
+    self.priceChg = 0
+    self.priceDir = ' '
     self.alive = True
     self.sales = 0 # Number of customers at the adjacent period
     self.profits = 0
@@ -442,41 +444,38 @@ class Seller(Agent):
           self.sales = len(self.csa_list)
           self.alive = False # Temporarily disappears from buyers' eyes
 
-      ''' Price Adjustment Downwards'''
-      # React if not walmart and sales were too low (ie didn't cover all the costs)
-      if (self.csa == 0 and not self.w and np.random.rand() > self.price*self.sales/self.costs):
+      if (self.csa == 0 and not self.w and self.profits<0 and np.random.rand() > self.price*self.sales/self.costs):
+        ''' Price Adjustment Downwards'''
+        # React if not walmart and sales were too low (ie didn't cover all the costs)
         minNeighborPrice = 100000
         for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
           if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price < minNeighborPrice):
             minNeighborPrice = neighbor.price
-
         if (minNeighborPrice <= self.price):
           # If a lower price nearby they undercut their neighbors
           model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
-          self.price = model.prices[self.sid]
-        else:
+        #else:
           # Keep their price the same for now (otherwise it's very unstable)
           #model.prices[self.sid] = Seller.priceAdjustDown*model.prices[self.sid]
           #self.price = model.prices[self.sid]
-          model.prices[self.sid] = model.prices[self.sid]
-
-      ''' Price Adjustment Upwards'''
-      # React if not walmart and sales were high (but below ideal revenue)
-      if (self.csa == 0 and not self.w and np.random.rand() > 1 - self.profits/self.idealProfits):
+      elif (self.csa == 0 and not self.w and self.profits>0 and np.random.rand() > self.profits/self.idealProfits):
+        ''' Price Adjustment Upwards'''
+        # React if not walmart and sales were high (but below ideal revenue)
         maxNeighborPrice = 0
         for neighbor in self.grid.get_neighbors(self.pos,True,False,Seller.obsRadius):
           if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price > maxNeighborPrice):
             maxNeighborPrice = neighbor.price
-
         if (maxNeighborPrice >= self.price):
           # If a not the lowest price nearby they just undercut their neighbors
           model.prices[self.sid] = Seller.underCutPercent*maxNeighborPrice
-          self.price = model.prices[self.sid]
-        else:
+        #else:
           # Keep their price the same for now (otherwise it's very unstable)
           #model.prices[self.sid] = Seller.priceAdjustUp*model.prices[self.sid]
-          #self.price = model.prices[self.sid]
-          model.prices[self.sid] = model.prices[self.sid]
+      self.priceChg = model.prices[self.sid] - self.price
+      if (self.priceChg<0): self.priceDir ='-'
+      elif (self.priceChg>0): self.priceDir ='+'
+      else: self.priceDir =' '
+      self.price = model.prices[self.sid]
 
     '''Update CSA status'''
     if self.csa:
