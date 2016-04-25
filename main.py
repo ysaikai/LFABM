@@ -415,8 +415,10 @@ class Seller(Agent):
     self.cnt_csa = 0
     self.csa_list = []
     self.customers = {}
+    self.age = 0
 
   def step(self, model):
+    self.age += 1
     '''Cash balance'''
     if self.csa == False:
       # self.profits = self.sales*(self.price - self.κ*self.e) - self.costs
