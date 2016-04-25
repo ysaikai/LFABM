@@ -496,11 +496,11 @@ class Seller(Agent):
             minNeighborPrice = neighbor.price
         if (minNeighborPrice <= self.price):
           # If a lower price nearby they undercut their neighbors
-          model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
+          new_Price = Seller.underCutPercent*minNeighborPrice
         #else:
           # Keep their price the same for now (otherwise it's very unstable)
-          #model.prices[self.sid] = Seller.priceAdjustDown*model.prices[self.sid]
-          #self.price = model.prices[self.sid]
+          #new_Price = Seller.priceAdjustDown*self.price
+          #self.price = new_Price
       elif (self.csa == 0 and not self.w and self.profits>0 and np.random.rand() > self.profits/self.idealProfits):
         ''' Price Adjustment Upwards'''
         # React if not walmart and sales were high (but below ideal revenue)
@@ -510,15 +510,15 @@ class Seller(Agent):
             maxNeighborPrice = neighbor.price
         if (maxNeighborPrice >= self.price):
           # If a not the lowest price nearby they just undercut their neighbors
-          model.prices[self.sid] = Seller.underCutPercent*maxNeighborPrice
+          new_Price = Seller.underCutPercent*maxNeighborPrice
         #else:
           # Keep their price the same for now (otherwise it's very unstable)
-          #model.prices[self.sid] = Seller.priceAdjustUp*model.prices[self.sid]
-      self.priceChg = model.prices[self.sid] - self.price
+          #new_Price = Seller.priceAdjustUp*self.price
+      self.priceChg = new_Price - self.price
       if (self.priceChg<0): self.priceDir ='-'
       elif (self.priceChg>0): self.priceDir ='+'
       else: self.priceDir =' '
-      self.price = model.prices[self.sid]
+      self.price = new_Price
 
     '''Update CSA status'''
     if self.csa:
