@@ -61,7 +61,7 @@ class Trade(Model):
   trust_w = 0.5
   costs = 0.02 * ini_buyers
   mktresearch = False
-  csa = 0
+  csa = 1
   csa_length = 26 # CSA contract length
   '''
   Entry mode
@@ -164,10 +164,14 @@ class Trade(Model):
     self.sid_alive = [] # Excluding Wal-Mart
 
     for sid, seller in self.sellers.items():
-      '''Adjacent sales'''
-      seller.sales = 0
-      '''Customer list'''
-      seller.customers[self.cnt] = []
+      if seller.csa == False:
+        '''Adjacent sales'''
+        seller.sales = 0
+        '''Customer list'''
+        seller.customers[self.cnt] = []
+      else:
+        seller.customers[self.cnt] = seller.customers[self.cnt - 1]
+
       '''A list of living sellers (excluding Wal-Mart)'''
       if (seller.alive and seller.w == False):
         self.sid_alive.append(sid)
@@ -410,13 +414,13 @@ class Seller(Agent):
     self.customers = {}
 
   def step(self, model):
-    # Cash balance
+    '''Cash balance'''
     if self.csa == False:
       # self.profits = self.sales*(self.price - self.κ*self.e) - self.costs
       self.profits = self.sales*(self.price) - self.costs - self.κ*self.e
       self.cash += self.profits
 
-    # Insolvency (Wal-Mart is immortal)
+    '''Insolvency (Wal-Mart is immortal)'''
     if (self.w == False and self.cash < 0):
       self.alive = False
       model.grid._remove_agent(self.pos, self)
@@ -424,15 +428,17 @@ class Seller(Agent):
       del model.sellers[self.sid]
 
     if self.alive:
+      '''CSA mode is ON'''
       if model.csa:
-        '''Become a CSA farmer'''
-        if (self.sales*self.price > self.costs*1.5 and self.csa == 0):
+        '''Whether to become a CSA farmer'''
+        if (self.csa == False and self.e > 0.7 and self.sales > 0.03*model.ini_buyers):
           for customer in self.customers[model.cnt]:
             model.buyers[customer].csa = True
           self.cash += self.profits*(model.csa_length - 1)
           self.csa = True
           self.cnt_csa = 0
           self.csa_list = self.customers[model.cnt]
+          self.sales = len(self.csa_list)
           self.alive = False # Temporarily disappears from buyers' eyes
 
       ''' Price Adjustment Downwards'''
@@ -471,6 +477,7 @@ class Seller(Agent):
           #self.price = model.prices[self.sid]
           model.prices[self.sid] = model.prices[self.sid]
 
+    '''Update CSA status'''
     if self.csa:
       self.cnt_csa += 1
     if self.cnt_csa >= model.csa_length:

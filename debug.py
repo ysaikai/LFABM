@@ -26,7 +26,7 @@ Show seller information
 def sellers(cnt, num_w, sellers, buyers):
   print("\nPeriod:", cnt)
   print(len(sellers)-num_w, "local sellers")
-  print("{0:>4} {1:^9}  {2:>4} {3:>6} {4:>6} {5:>8} {6:>7} {7:>8}".format("sid", "Cell", "Ebd", "Price", "Sales", "Profits", "Cash", "AvgTst"))
+  print("{:>4} {:^9} {:>3} {:>5} {:>6} {:>6} {:>8} {:>6} {:>8}".format("sid", "Cell", "CSA", "Ebd", "Price", "Sales", "Profits", "Cash", "AvgTst"))
   for obj in sellers.values():
     sid = obj.sid
     # Calculate the average trust of the customers at the current period
@@ -36,7 +36,7 @@ def sellers(cnt, num_w, sellers, buyers):
       τ += buyers[customer].trust[sid]
     if τ > 0:
       avg_τ = τ / len(obj.customers[cnt])
-    print("{0:>4} {1:>9}  {2:>4.2f} {3:>6.2f} {4:>6} {5:>8.2f} {6:>7.0f} {7:>8.2f}".format(sid, str(obj.pos), obj.e, obj.price, obj.sales, obj.profits, obj.cash, avg_τ))
+    print("{:>4} {:>9} {:>3} {:>5.2f} {:>6.2f} {:>6} {:>8.2f} {:>6.0f} {:>8.2f}".format(sid, str(obj.pos), obj.csa, obj.e, obj.price, obj.sales, obj.profits, obj.cash, avg_τ))
 
 '''
 exp(util) - weight
