@@ -99,12 +99,14 @@ class Trade(Model):
     self.entry = int(d['entry'])
     self.entryFrequency = int(d['entryFrequency'])
     self.entryThreshhold = d['entryThreshhold'] * self.ini_cash
+    self.entryRadius = d['entryRadius']  # Area within high earner that a new seller will plop down
 
     '''Debugging'''
     self.sellerDebug = d['sellerDebug']
     self.buyerDebug = d['buyerDebug']
     self.networkDebug = d['networkDebug']
     self.utilweightDebug = d['utilweightDebug']
+    self.entryDebug = d['entryDebug']
 
     self.schedule = RandomActivationByType(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)

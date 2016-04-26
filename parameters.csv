@@ -12,11 +12,13 @@ csa_length,26
 network,1
 entry,3
 entryFrequency,8
-entryThreshhold,10
+entryThreshhold,5
+entryRadius,3
 sellerDebug,1
 buyerDebug,0
 networkDebug,0
 utilweightDebug,0
+entryDebug,1
 lb,1
 ub,10000
 up,1.05
