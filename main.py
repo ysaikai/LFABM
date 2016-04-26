@@ -44,7 +44,7 @@ from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
 import debug
-# import csa
+import network
 # import embeddedness as ebd
 
 
@@ -61,8 +61,9 @@ class Trade(Model):
   trust_w = 0.5
   costs = 0.02 * ini_buyers
   mktresearch = False
-  csa = 0
+  csa = False
   csa_length = 26 # CSA contract length
+  network = True
   '''
   Entry mode
     0: No entry
@@ -72,14 +73,13 @@ class Trade(Model):
   '''
   entry = 3
   entryFrequency = 8
-  entryThreshhold = 5*ini_cash
-  entryRadius = 3  # Area within high earner that a new seller will plop down
+  entryThreshhold = 10*ini_cash
 
   '''Debugging'''
-  sellerDebug = True
+  sellerDebug = 1
   buyerDebug = False
+  networkDebug = False
   utilweightDebug = 0
-  entryDebug = True
 
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
@@ -103,12 +103,11 @@ class Trade(Model):
 
     self.lb = 1 # Lower bound
     self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.03 # Up rate
+    self.up = 1.05 # Up rate
     self.down = 0.99 # Down rate
 
     prices = {}
     for i in range(ini_sellers):
-      # prices[i] = 2
       prices[i] = np.random.rand() + 1 # 1.0 - 2.0
     min_price = min(prices.values())
     for i in range(self.num_w):
@@ -128,7 +127,7 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      α = 2
+      α = 3
       trust = {}
       β = 5*np.random.rand()
       for j in range(ini_sellers):
@@ -137,7 +136,14 @@ class Trade(Model):
         trust[j] = self.trust_w
       γ = 1
 
-      buyer = Buyer(i, self.grid, (x, y), True, α, trust, β, γ)
+      '''
+      Network ties
+        ties[j]=0 means 'no connection with bid=j buyer'
+        ties[own bid] = 0 or 1 means nothing.
+      '''
+      ties = dict(zip(range(ini_buyers),[0]*ini_buyers))
+
+      buyer = Buyer(i, self.grid, (x, y), True, α, trust, β, γ, ties)
       self.buyers[i] = buyer # Dictionary key is an integer
       self.grid.place_agent(buyer, (x, y))
       self.schedule.add(buyer)
@@ -191,30 +197,16 @@ class Trade(Model):
       self.avg_cash = total_cash / len(self.sid_alive)
     elif self.entry == 3:
       # Calculate the max cash balance (scalar)
-      temp_sids = self.sid_alive
-      cash_bals = [self.sellers[sid].cash for sid in temp_sids]
-      new_sellers = True
-      while(new_sellers):  # Loops over maximal sellers until it finds one with no new firms nearby
-        max_cash = max(cash_bals)
-        if(max_cash < self.entryThreshhold): break
-        max_cash_ind = cash_bals.index(max_cash)
-        max_sid = temp_sids[max_cash_ind]
-        max_x = self.sellers[max_sid].pos[0]
-        max_y = self.sellers[max_sid].pos[1]
-        if(self.entryDebug):
-          print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
-        new_sellers = False
-        # Check the age of all firms nearby the max cash balance firm (wants to avoid new firms)
-        print("-Neighbor Ages:", end=" ")
-        for neighbor in self.grid.get_neighbors((max_x, max_y),True,True,self.entryRadius): 
-          if(isinstance(neighbor, Seller) and self.entryDebug): print(str(neighbor.age), end=" ")
-          if(isinstance(neighbor, Seller) and neighbor.age < 52): new_sellers = True
-        if(new_sellers):
-          if(self.entryDebug):
-            print("\n-New Firm Exists Near sid: ", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
-          del temp_sids[max_cash_ind]
-          del cash_bals[max_cash_ind]
+      cash_bals = [self.sellers[sid].cash for sid in self.sid_alive]
+      max_cash = max(cash_bals)
+      max_sid = self.sid_alive[cash_bals.index(max_cash)]
+      max_x = self.sellers[max_sid].pos[0]
+      max_y = self.sellers[max_sid].pos[1]
+      '''Debug'''
+      print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
 
+      ## Need to check aeg of nearby sellers, new firm will not enter if a new firm already entered nearby
+      ## Still need to implement this
 
     '''
     Entry
@@ -225,8 +217,7 @@ class Trade(Model):
         Enter whenever Avg cash balance > entryThreshhold
       Entry=3
         Enter whenever max cash balance > entryThreshhold
-        Checks for no new firms are near that max balance seller
-        Enters within entryRadius units of the seller with max cash balance
+        Enters within 3 units of the seller with max cash balance
     '''
     entry_on = False
 
@@ -244,11 +235,9 @@ class Trade(Model):
       y = np.random.randint(self.height)
       entry_on = True
 
-    elif (self.entry == 3 and max_cash > self.entryThreshhold and not new_sellers):
-      x = max_x + np.random.randint(-self.entryRadius,self.entryRadius)
-      y = max_y + np.random.randint(-self.entryRadius,self.entryRadius)
-      x = x % self.width
-      y = y % self.height
+    elif (self.entry == 3 and max_cash > self.entryThreshhold):
+      x = max_x + 1 #np.random.randint(self.width)
+      y = max_y + 1 #np.random.randint(self.height)
       entry_on = True
 
     if entry_on:
@@ -283,12 +272,19 @@ class Trade(Model):
         self.schedule.get_type_count(Seller),
         self.schedule.get_type_count(Buyer)])
 
+    '''Network'''
+    if self.network:
+      network.formation(self.cnt, self.buyers, self.sellers, self.sid_alive)
+
     '''
     Debugging
     '''
     '''Display trust levels'''
     if self.buyerDebug:
       debug.buyers(self.buyers)
+    '''Network'''
+    if self.networkDebug:
+      debug.network(self.buyers)
     '''Display seller information'''
     if self.sellerDebug:
       debug.sellers(self.cnt, self.num_w, self.sellers, self.buyers)
@@ -302,7 +298,7 @@ class Buyer(Agent):
   β: coefficient on embeddedness
   γ: coefficient on distance
   '''
-  def __init__(self, bid, grid, pos, moore, α, trust, β, γ):
+  def __init__(self, bid, grid, pos, moore, α, trust, β, γ, ties):
     self.bid = bid
     self.grid = grid
     self.pos = pos
@@ -312,9 +308,10 @@ class Buyer(Agent):
     self.β = β
     self.γ = γ
     self.csa = False
+    self.ties = ties
 
   def step(self, model):
-    def util(i):
+    def utility(i):
       '''
       util = α*trust + β*e - γ*d - p
       model.sellers[sid]: a seller object, containing attribute pos=[x][y]
@@ -338,25 +335,27 @@ class Buyer(Agent):
         4. Weights = Relative sizes of them
       '''
       sid_alive = []
-      utils = []
+      utils = dict()
       for sid, seller in model.sellers.items():
         if seller.alive:
           sid_alive.append(sid)
-          utils.append(util(sid))
+          utils[sid] = utility(sid)
+          # utils.append(util(sid))
       # Transform into an appropriate interval
-      Δ = max(utils) - min(utils)
+      tmp = utils.values()
+      Δ = max(tmp) - min(tmp)
       if (Δ == 0): Δ=1
-      utils = np.array([(u - min(utils))*15/Δ - 5 for u in utils])
+      tmp = np.array([(u - min(tmp))*15/Δ - 5 for u in tmp])
       # Exponentiate
-      utils = np.exp(utils)
-      weights = utils / np.sum(utils)
+      tmp = np.exp(tmp)
+      weights = tmp / np.sum(tmp)
       choice = np.random.choice(sid_alive, p=weights)
       model.sellers[choice].sales += 1
       model.sellers[choice].customers[model.cnt].append(self.bid)
 
       # Debugging
       if model.utilweightDebug:
-        debug.util_weight(self.bid, utils, weights)
+        debug.util_weight(self.bid, tmp, weights)
 
       '''
       Update the trust
@@ -371,6 +370,7 @@ class Buyer(Agent):
       ub = model.ub # Upper bound
       up = model.up # Up rate
       down = model.down # Down rate
+      new_sellers = dict() # Sellers in whom trust=lb
 
       for sid, seller in model.sellers.items():
         if seller.w == False:
@@ -384,6 +384,24 @@ class Buyer(Agent):
           if self.trust[sid] > ub:
             self.trust[sid] = ub
           elif self.trust[sid] < lb:
+            self.trust[sid] = lb
+
+        if self.trust[sid] == lb:
+          new_sellers[sid] = utils[sid]
+
+      '''Recommendation on a new seller'''
+      if model.network:
+        # tmp = dict(zip(new_sellers, [utils[sid] for sid in new_sellers]))
+        sid = max(new_sellers, key=new_sellers.get)
+        reputation = list()
+        for bid, tie in self.ties.items():
+          if tie == 1: # If he is a friend, then ask him about the seller
+            τ = model.buyers[bid].trust[sid]
+            if τ > lb:
+              reputation.append(τ)
+        if len(reputation): # If the reputation list is not empty
+          self.trust[sid] = np.median(reputation) * 0.9 # Just not fully...
+          if self.trust[sid] < lb:
             self.trust[sid] = lb
 
       '''
@@ -487,7 +505,6 @@ class Seller(Agent):
           self.sales = len(self.csa_list)
           self.alive = False # Temporarily disappears from buyers' eyes
 
-      new_Price = self.price
       if (self.csa == 0 and not self.w and self.profits<0 and np.random.rand() > self.price*self.sales/self.costs):
         ''' Price Adjustment Downwards'''
         # React if not walmart and sales were too low (ie didn't cover all the costs)
@@ -497,11 +514,11 @@ class Seller(Agent):
             minNeighborPrice = neighbor.price
         if (minNeighborPrice <= self.price):
           # If a lower price nearby they undercut their neighbors
-          new_Price = Seller.underCutPercent*minNeighborPrice
+          model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
         #else:
           # Keep their price the same for now (otherwise it's very unstable)
-          #new_Price = Seller.priceAdjustDown*self.price
-          #self.price = new_Price
+          #model.prices[self.sid] = Seller.priceAdjustDown*model.prices[self.sid]
+          #self.price = model.prices[self.sid]
       elif (self.csa == 0 and not self.w and self.profits>0 and np.random.rand() > self.profits/self.idealProfits):
         ''' Price Adjustment Upwards'''
         # React if not walmart and sales were high (but below ideal revenue)
@@ -511,15 +528,15 @@ class Seller(Agent):
             maxNeighborPrice = neighbor.price
         if (maxNeighborPrice >= self.price):
           # If a not the lowest price nearby they just undercut their neighbors
-          new_Price = Seller.underCutPercent*maxNeighborPrice
+          model.prices[self.sid] = Seller.underCutPercent*maxNeighborPrice
         #else:
           # Keep their price the same for now (otherwise it's very unstable)
-          #new_Price = Seller.priceAdjustUp*self.price
-      self.priceChg = new_Price - self.price
+          #model.prices[self.sid] = Seller.priceAdjustUp*model.prices[self.sid]
+      self.priceChg = model.prices[self.sid] - self.price
       if (self.priceChg<0): self.priceDir ='-'
       elif (self.priceChg>0): self.priceDir ='+'
       else: self.priceDir =' '
-      self.price = new_Price
+      self.price = model.prices[self.sid]
 
     '''Update CSA status'''
     if self.csa:

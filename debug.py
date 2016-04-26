@@ -19,6 +19,14 @@ def buyers(arg):
     sid3 = tmp.index(t3)
     print("{bid:03d} {t1:5.2f}({sid1:02d}) {t2:5.2f}({sid2:02d}) {t3:5.2f}({sid3:02d})".format(bid=bid,t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
 
+'''
+Network
+'''
+def network(arg):
+  print("\nBuyers network")
+  for buyer in arg.values():
+    print(buyer.ties)
+
 
 '''
 Show seller information
