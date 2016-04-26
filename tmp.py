@@ -71,10 +71,6 @@ class Trade(Model):
     for key, value in reader:
       d[key] = float(value)
 
-    # self.height = int(d['height'])
-    # self.width = int(d['width'])
-    # self.ini_buyers = int(d['ini_buyers'])
-    # self.ini_sellers = int(d['ini_sellers'])
     self.ini_cash = d['ini_cash']
     self.num_w = int(d['num_w'])
     self.trust_w = d['trust_w']
@@ -99,7 +95,7 @@ class Trade(Model):
     self.entry = int(d['entry'])
     self.entryFrequency = int(d['entryFrequency'])
     self.entryThreshhold = d['entryThreshhold'] * self.ini_cash
-    self.entryRadius = d['entryRadius']  # Area within high earner that a new seller will plop down
+    self.entryRadius = int(d['entryRadius'])  # Area within high earner that a new seller will plop down
 
     '''Debugging'''
     self.sellerDebug = d['sellerDebug']
