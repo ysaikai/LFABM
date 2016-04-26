@@ -4,8 +4,8 @@ import numpy as np
 Display trust levels
 '''
 def buyers(arg):
-  print("\nBuyers trust levels Top3 (sid in brackets)")
-  print("{0:6} {1:9} {2:9} {3:9}".format("bid", "#1", "#2", "#3"))
+  print("\nBuyers trust levels (sid in brackets)")
+  print("{:6} {:9} {:9} {:9} {:9} {:9}".format("bid", "#1", "#2", "#3", "#4", "#5"))
   for obj in arg.values():
     bid = obj.bid
     tmp = list(obj.trust.values())
@@ -17,7 +17,13 @@ def buyers(arg):
     tmp.remove(t2)
     t3 = max(tmp)
     sid3 = tmp.index(t3)
-    print("{bid:03d} {t1:5.2f}({sid1:02d}) {t2:5.2f}({sid2:02d}) {t3:5.2f}({sid3:02d})".format(bid=bid,t1=t1,t2=t2,t3=t3,sid1=sid1,sid2=sid2,sid3=sid3))
+    tmp.remove(t3)
+    t4 = max(tmp)
+    sid4 = tmp.index(t4)
+    tmp.remove(t4)
+    t5 = max(tmp)
+    sid5 = tmp.index(t5)
+    print("{bid:03d} {t1:5.2f}({sid1:02d}) {t2:5.2f}({sid2:02d}) {t3:5.2f}({sid3:02d}) {t4:5.2f}({sid4:02d}) {t5:5.2f}({sid5:02d})".format(bid=bid,t1=t1,t2=t2,t3=t3,t4=t4,t5=t5,sid1=sid1,sid2=sid2,sid3=sid3,sid4=sid4,sid5=sid5))
 
 '''
 Network

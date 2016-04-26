@@ -410,7 +410,7 @@ class Buyer(Agent):
           if sid == choice:
             self.trust[sid] = self.trust[sid] * (up * up_chance)
           else:
-            self.trust[sid] = self.trust[sid] * (down * (1-up_chance))
+            self.trust[sid] = self.trust[sid] * down
 
           if self.trust[sid] > ub:
             self.trust[sid] = ub
