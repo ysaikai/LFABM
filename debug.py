@@ -35,6 +35,14 @@ def sellers(cnt, num_w, sellers, buyers):
   print("\nPeriod:", cnt)
   print(len(sellers)-num_w, "local sellers")
   print("{:>4} {:>9} {:>3} {:>5} {:>7} {:>6} {:>8} {:>6} {:>8} {:>4}".format("sid", "Cell", "CSA", "Ebd", "Price", "Sales", "Profits", "Cash", "AvgTst", "Age"))
+  totCSA = 0
+  totE = 0
+  totPrice = 0
+  totSales = 0
+  totProfits = 0
+  totCash = 0
+  totAvgτ = 0
+  totAge = 0
   for obj in sellers.values():
     sid = obj.sid
     # Calculate the average trust of the customers at the current period
@@ -44,7 +52,28 @@ def sellers(cnt, num_w, sellers, buyers):
       τ += buyers[customer].trust[sid]
     if τ > 0:
       avg_τ = τ / len(obj.customers[cnt])
+    # Averaging all seller attributes
+    if(sid > 0): # ie is not Walmart
+      totCSA += obj.csa
+      totE += obj.e
+      totPrice += obj.price
+      totSales += obj.sales
+      totProfits += obj.profits
+      totCash += obj.cash
+      totAvgτ += avg_τ
+      totAge += obj.age
+
     print("{:>4} {:>9} {:>3} {:>5.2f} {:>5.2f} {:1} {:>6} {:>8.2f} {:>6.0f} {:>8.2f} {:>4}".format(sid, str(obj.pos), obj.csa, obj.e, obj.price, obj.priceDir, obj.sales, obj.profits, obj.cash, avg_τ, obj.age))
+  num_sellers = len(sellers.values())
+  avgCSA = totCSA/num_sellers
+  avgE = totE/num_sellers
+  avgPrice = totPrice/num_sellers
+  avgSales = totSales/num_sellers
+  avgProfits = totProfits/num_sellers
+  avgCash = totCash/num_sellers
+  avgAvgτ = totAvgτ/num_sellers
+  avgAge = totAge/num_sellers
+  print("{:<14} {:>3} {:>5.2f} {:>5.2f} {:>8.1f} {:>8.2f} {:>6.0f} {:>8.2f} {:>4.1f}".format("Averages: ", avgCSA, avgE, avgPrice, avgSales, avgProfits, avgCash, avgAvgτ, avgAge))
 
 '''
 exp(util) - weight
