@@ -34,6 +34,8 @@ Profitability
   [0] - (0,0), [1] - (0,1),..., [width] - (1,0),... and so on.
 '''
 
+import os
+import csv
 import numpy as np
 import random
 from collections import defaultdict
@@ -47,48 +49,60 @@ import debug
 import network
 # import embeddedness as ebd
 
-
 class Trade(Model):
   verbose = False # Print-monitoring
 
-  '''Parameters'''
-  height = 20
-  width = 20
-  ini_buyers = 300
-  ini_sellers = 50
-  ini_cash = 100
-  num_w = 1 # Number of Wal-Mart
-  trust_w = 0.5
-  costs = 0.02 * ini_buyers
-  mktresearch = False
-  csa = False
-  csa_length = 26 # CSA contract length
-  network = True
-  '''
-  Entry mode
-    0: No entry
-    1: Full market research
-    2: Whenever Avg cash balance > entryThreshhold with a random position
-    3: Whenever Max cash balance > entryThreshhold enter nearby that position
-  '''
-  entry = 3
-  entryFrequency = 8
-  entryThreshhold = 5*ini_cash
-  entryRadius = 3  # Area within high earner that a new seller will plop down
+  os.chdir(os.path.dirname(__file__))
+  fpath = os.getcwd() + '/parameters.csv'
+  reader = csv.reader(open(fpath, 'r'))
+  d = dict()
+  for key, value in reader:
+    d[key] = float(value)
 
-  '''Debugging'''
-  sellerDebug = 1
-  buyerDebug = False
-  networkDebug = False
-  utilweightDebug = 0
-  entryDebug = True
-
+  height = int(d['height'])
+  width = int(d['width'])
+  ini_buyers = int(d['ini_buyers'])
+  ini_sellers = int(d['ini_sellers'])
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
-    self.height = height
-    self.width = width
-    self.ini_buyers = ini_buyers
-    self.ini_sellers = ini_sellers
+    '''Parameters'''
+    reader = csv.reader(open(self.fpath, 'r'))
+    d = dict()
+    for key, value in reader:
+      d[key] = float(value)
+
+    self.ini_cash = d['ini_cash']
+    self.num_w = int(d['num_w'])
+    self.trust_w = d['trust_w']
+    self.costs = d['costs'] * ini_buyers
+    self.mktresearch = d['mktresearch']
+    self.csa = int(d['csa'])
+    self.csa_length = int(d['csa_length'])
+    self.network = int(d['network'])
+
+    self.lb = d['lb'] # Lower bound
+    self.ub = d['ub'] # Upper bound (in effect, unbounded)
+    self.up = d['up'] # Up rate
+    self.down = d['down'] # Down rate
+
+    '''
+    Entry mode
+      0: No entry
+      1: Full market research
+      2: Whenever Avg cash balance > entryThreshhold with a random position
+      3: Whenever Max cash balance > entryThreshhold enter nearby that position
+    '''
+    self.entry = int(d['entry'])
+    self.entryFrequency = int(d['entryFrequency'])
+    self.entryThreshhold = d['entryThreshhold'] * self.ini_cash
+    self.entryRadius = int(d['entryRadius'])  # Area within high earner that a new seller will plop down
+
+    '''Debugging'''
+    self.sellerDebug = d['sellerDebug']
+    self.buyerDebug = d['buyerDebug']
+    self.networkDebug = d['networkDebug']
+    self.utilweightDebug = d['utilweightDebug']
+    self.entryDebug = d['entryDebug']
 
     self.schedule = RandomActivationByType(self)
     self.grid = MultiGrid(self.height, self.width, torus=True)
@@ -102,11 +116,6 @@ class Trade(Model):
     self.sellers = {} # Dictionary of seller instances
     self.sid_alive = []
     self.pi = [0] * (height * width) # Profitability
-
-    self.lb = 1 # Lower bound
-    self.ub = 10000 # Upper bound (in effect, unbounded)
-    self.up = 1.05 # Up rate
-    self.down = 0.99 # Down rate
 
     prices = {}
     for i in range(ini_sellers):
@@ -129,14 +138,14 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      α = 3
+      α = d['α']
       trust = {}
-      β = 5*np.random.rand()
+      β = d['β']*np.random.rand()
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
         trust[j] = self.trust_w
-      γ = 1
+      γ = d['γ']
 
       '''
       Network ties
@@ -214,7 +223,7 @@ class Trade(Model):
         new_sellers = False
         # Check the age of all firms nearby the max cash balance firm (wants to avoid new firms)
         print("-Neighbor Ages:", end=" ")
-        for neighbor in self.grid.get_neighbors((max_x, max_y),True,True,self.entryRadius): 
+        for neighbor in self.grid.get_neighbors((max_x, max_y),True,True,self.entryRadius):
           if(isinstance(neighbor, Seller) and self.entryDebug): print(str(neighbor.age), end=" ")
           if(isinstance(neighbor, Seller) and neighbor.age < 52): new_sellers = True
         if(new_sellers):
