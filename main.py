@@ -13,16 +13,12 @@ Notes
 2. Sellers check the cash balance and die or post prices
 
 [Unique identifier]
-Many examples use pos as identifier (x-y position is unique on each grid).
+Many mesa examples use pos as identifier (x-y position is unique on each grid).
 Here, scalar bid & sid are created to make them independent of spaces
 because it's just natural to use a sequence of integers. Plus, some models
 may not use a spatial grid.
 
-[Initial parameters]
-They are scattered across the scripts. It may be cleaner to specify
-all the initial parameter values in an external text file.
-
-[Entry]
+[Entry1]
 At each period, there's a random entry of a new seller
 Price: the average of the existing prices (so far, including Wal-Mart)
 Calculate the profitability of each cell at each period, as if it entered
@@ -47,7 +43,6 @@ from mesa.datacollection import DataCollector
 
 import debug
 import network
-# import embeddedness as ebd
 
 class Trade(Model):
   verbose = False # Print-monitoring
@@ -81,9 +76,9 @@ class Trade(Model):
     self.trust_w = d['trust_w']
     self.costs = d['costs'] * ini_buyers
     self.mktresearch = d['mktresearch']
-    self.csa = int(d['csa'])
+    self.csa = d['csa']
     self.csa_length = int(d['csa_length'])
-    self.network = int(d['network'])
+    self.network = d['network']
 
     self.lb = d['lb'] # Lower bound
     self.ub = d['ub'] # Upper bound (in effect, unbounded)
