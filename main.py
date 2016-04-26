@@ -65,12 +65,17 @@ class Trade(Model):
   ini_sellers = int(d['ini_sellers'])
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
+
     '''Parameters'''
     reader = csv.reader(open(self.fpath, 'r'))
     d = dict()
     for key, value in reader:
       d[key] = float(value)
 
+    self.height = int(d['height'])
+    self.width = int(d['width'])
+    self.ini_buyers = int(d['ini_buyers'])
+    self.ini_sellers = int(d['ini_sellers'])
     self.ini_cash = d['ini_cash']
     self.num_w = int(d['num_w'])
     self.trust_w = d['trust_w']
