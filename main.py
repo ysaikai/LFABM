@@ -73,13 +73,15 @@ class Trade(Model):
   '''
   entry = 3
   entryFrequency = 8
-  entryThreshhold = 10*ini_cash
+  entryThreshhold = 5*ini_cash
+  entryRadius = 3  # Area within high earner that a new seller will plop down
 
   '''Debugging'''
   sellerDebug = 1
   buyerDebug = False
   networkDebug = False
   utilweightDebug = 0
+  entryDebug = True
 
 
   def __init__(self, height=height, width=width, ini_buyers=ini_buyers, ini_sellers=ini_sellers):
@@ -197,16 +199,29 @@ class Trade(Model):
       self.avg_cash = total_cash / len(self.sid_alive)
     elif self.entry == 3:
       # Calculate the max cash balance (scalar)
-      cash_bals = [self.sellers[sid].cash for sid in self.sid_alive]
-      max_cash = max(cash_bals)
-      max_sid = self.sid_alive[cash_bals.index(max_cash)]
-      max_x = self.sellers[max_sid].pos[0]
-      max_y = self.sellers[max_sid].pos[1]
-      '''Debug'''
-      print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
-
-      ## Need to check aeg of nearby sellers, new firm will not enter if a new firm already entered nearby
-      ## Still need to implement this
+      temp_sids = self.sid_alive
+      cash_bals = [self.sellers[sid].cash for sid in temp_sids]
+      new_sellers = True
+      while(new_sellers):  # Loops over maximal sellers until it finds one with no new firms nearby
+        max_cash = max(cash_bals)
+        if(max_cash < self.entryThreshhold): break
+        max_cash_ind = cash_bals.index(max_cash)
+        max_sid = temp_sids[max_cash_ind]
+        max_x = self.sellers[max_sid].pos[0]
+        max_y = self.sellers[max_sid].pos[1]
+        if(self.entryDebug):
+          print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
+        new_sellers = False
+        # Check the age of all firms nearby the max cash balance firm (wants to avoid new firms)
+        print("-Neighbor Ages:", end=" ")
+        for neighbor in self.grid.get_neighbors((max_x, max_y),True,True,self.entryRadius): 
+          if(isinstance(neighbor, Seller) and self.entryDebug): print(str(neighbor.age), end=" ")
+          if(isinstance(neighbor, Seller) and neighbor.age < 52): new_sellers = True
+        if(new_sellers):
+          if(self.entryDebug):
+            print("\n-New Firm Exists Near sid: ", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
+          del temp_sids[max_cash_ind]
+          del cash_bals[max_cash_ind]
 
     '''
     Entry
@@ -216,8 +231,8 @@ class Trade(Model):
       Entry=2
         Enter whenever Avg cash balance > entryThreshhold
       Entry=3
-        Enter whenever max cash balance > entryThreshhold
-        Enters within 3 units of the seller with max cash balance
+        Checks that no new firms are near the max balance seller
+        Enters within entryRadius units of the seller with max cash balance
     '''
     entry_on = False
 
@@ -235,9 +250,11 @@ class Trade(Model):
       y = np.random.randint(self.height)
       entry_on = True
 
-    elif (self.entry == 3 and max_cash > self.entryThreshhold):
-      x = max_x + 1 #np.random.randint(self.width)
-      y = max_y + 1 #np.random.randint(self.height)
+    elif (self.entry == 3 and max_cash > self.entryThreshhold and not new_sellers):
+      x = max_x + np.random.randint(-self.entryRadius,self.entryRadius)
+      y = max_y + np.random.randint(-self.entryRadius,self.entryRadius)
+      x = x % self.width
+      y = y % self.height
       entry_on = True
 
     if entry_on:
@@ -504,7 +521,7 @@ class Seller(Agent):
           self.csa_list = self.customers[model.cnt]
           self.sales = len(self.csa_list)
           self.alive = False # Temporarily disappears from buyers' eyes
-
+      new_Price = self.price
       if (self.csa == 0 and not self.w and self.profits<0 and np.random.rand() > self.price*self.sales/self.costs):
         ''' Price Adjustment Downwards'''
         # React if not walmart and sales were too low (ie didn't cover all the costs)
@@ -514,11 +531,11 @@ class Seller(Agent):
             minNeighborPrice = neighbor.price
         if (minNeighborPrice <= self.price):
           # If a lower price nearby they undercut their neighbors
-          model.prices[self.sid] = Seller.underCutPercent*minNeighborPrice
+          new_Price = Seller.underCutPercent*minNeighborPrice
         #else:
           # Keep their price the same for now (otherwise it's very unstable)
-          #model.prices[self.sid] = Seller.priceAdjustDown*model.prices[self.sid]
-          #self.price = model.prices[self.sid]
+          #new_Price = Seller.priceAdjustDown*self.price
+          #self.price = new_Price
       elif (self.csa == 0 and not self.w and self.profits>0 and np.random.rand() > self.profits/self.idealProfits):
         ''' Price Adjustment Upwards'''
         # React if not walmart and sales were high (but below ideal revenue)
@@ -527,16 +544,15 @@ class Seller(Agent):
           if (isinstance(neighbor, Seller) and not neighbor.w and neighbor.price > maxNeighborPrice):
             maxNeighborPrice = neighbor.price
         if (maxNeighborPrice >= self.price):
-          # If a not the lowest price nearby they just undercut their neighbors
-          model.prices[self.sid] = Seller.underCutPercent*maxNeighborPrice
+          # If not the lowest price nearby they just undercut their neighbors
+          new_Price = Seller.underCutPercent*maxNeighborPrice
         #else:
-          # Keep their price the same for now (otherwise it's very unstable)
-          #model.prices[self.sid] = Seller.priceAdjustUp*model.prices[self.sid]
-      self.priceChg = model.prices[self.sid] - self.price
+          #new_Price = Seller.priceAdjustUp*self.price
+      self.priceChg = new_Price - self.price
       if (self.priceChg<0): self.priceDir ='-'
       elif (self.priceChg>0): self.priceDir ='+'
       else: self.priceDir =' '
-      self.price = model.prices[self.sid]
+      self.price = new_Price
 
     '''Update CSA status'''
     if self.csa:
