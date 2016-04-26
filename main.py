@@ -274,7 +274,7 @@ class Trade(Model):
 
     '''Network'''
     if self.network:
-      network.formation(self.cnt, self.buyers, self.sellers, self.sid_alive)
+      network.formation(self.cnt, self.buyers, self.sellers)
 
     '''
     Debugging

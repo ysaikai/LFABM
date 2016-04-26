@@ -6,11 +6,9 @@ Tie formation
   The more embedded a seller, the greater chance to form a new tie.
   If taling to the already connected or himself (sad...), just put 1 again.
 '''
-def formation(cnt, buyers, sellers, sid_alive):
-  # for sid in sid_alive:
+def formation(cnt, buyers, sellers):
   for seller in sellers.values():
     if seller.alive:
-      # seller = sellers[sid]
       customers = seller.customers[cnt]
       for bid in customers:
         if np.random.rand() < seller.e:
