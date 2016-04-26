@@ -76,6 +76,7 @@ class Trade(Model):
     self.trust_w = d['trust_w']
     self.costs = d['costs'] * ini_buyers
     self.mktresearch = d['mktresearch']
+    self.priceRange = d['priceRange']
     self.csa = d['csa']
     self.csa_length = int(d['csa_length'])
     self.network = d['network']
@@ -119,10 +120,10 @@ class Trade(Model):
 
     prices = {}
     for i in range(ini_sellers):
-      prices[i] = np.random.rand() + 1 # 1.0 - 2.0
+      prices[i] = self.priceRange * np.random.rand() + 1
     min_price = min(prices.values())
     for i in range(self.num_w):
-      prices[i] = min_price*0.9
+      prices[i] = min_price * 0.9
     self.prices = prices
 
     e = {} # Embeddedness

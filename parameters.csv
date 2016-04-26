@@ -7,6 +7,7 @@ num_w,1
 trust_w,0.5
 costs,0.02
 mktresearch,0
+priceRange,3
 csa,0
 csa_length,26
 network,1
@@ -18,11 +19,11 @@ sellerDebug,1
 buyerDebug,0
 networkDebug,0
 utilweightDebug,0
-entryDebug,1
+entryDebug,0
 lb,1
 ub,10000
 up,1.05
-down,0.98
+down,0.99
 α,3
-β,5
+β,3
 γ,1
