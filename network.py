@@ -2,9 +2,9 @@ import numpy as np
 
 '''
 Tie formation
-  Random chance of talking to another customer in the same seller network.
-  The more embedded a seller, the greater chance to form a new tie.
-  If taling to the already connected or himself (sad...), just put 1 again.
+  Random chance to communicate with another customer in the seller network.
+  The more embedded the seller, the greater chance to talk and form a new tie.
+  If talking to the already connected or himself (sad...), just put 1 again.
 '''
 def formation(cnt, buyers, sellers):
   for seller in sellers.values():
