@@ -212,7 +212,9 @@ class Trade(Model):
       temp_sids = self.sid_alive
       cash_bals = [self.sellers[sid].cash for sid in temp_sids]
       new_sellers = True
-      while(new_sellers):  # Loops over maximal sellers until it finds one with no new firms nearby
+
+      # Loops over maximal sellers until it finds one with no new firms nearby
+      while(new_sellers):
         max_cash = max(cash_bals)
         if(max_cash < self.entryThreshhold): break
         max_cash_ind = cash_bals.index(max_cash)
@@ -221,9 +223,13 @@ class Trade(Model):
         max_y = self.sellers[max_sid].pos[1]
         if(self.entryDebug):
           print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
+
         new_sellers = False
-        # Check the age of all firms nearby the max cash balance firm (wants to avoid new firms)
-        print("-Neighbor Ages:", end=" ")
+        # Check the age of all firms nearby the max cash balance firm
+        # (wants to avoid new firms)
+        if(self.entryDebug):
+          print("-Neighbor Ages:", end=" ")
+
         for neighbor in self.grid.get_neighbors((max_x, max_y),True,True,self.entryRadius):
           if(isinstance(neighbor, Seller) and self.entryDebug): print(str(neighbor.age), end=" ")
           if(isinstance(neighbor, Seller) and neighbor.age < 52): new_sellers = True
@@ -285,7 +291,7 @@ class Trade(Model):
       self.schedule.add(seller)
       self.prices[sid] = price
 
-      if self.entry >= 1:
+      if (self.entry >= 1 and self.entryDebug):
         print("\n**********\n", "Entry!!", "\n**********")
         print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
 
@@ -303,18 +309,29 @@ class Trade(Model):
     if self.network:
       network.formation(self.cnt, self.buyers, self.sellers)
 
-    '''
-    Debugging
-    '''
-    '''Display trust levels'''
-    if self.buyerDebug:
-      debug.buyers(self.buyers)
-    '''Network'''
-    if self.networkDebug:
-      debug.network(self.buyers)
-    '''Display seller information'''
-    if self.sellerDebug:
-      debug.sellers(self.cnt, self.num_w, self.sellers, self.buyers)
+
+  def run_model(self, step_count):
+    for _ in range(step_count):
+      self.step()
+      '''
+      Debugging
+      '''
+      '''Display trust levels'''
+      if self.buyerDebug:
+        debug.buyers(self.buyers)
+      '''Network'''
+      if self.networkDebug:
+        debug.network(self.buyers)
+      '''Display seller information'''
+      if self.sellerDebug:
+        debug.sellers(self.cnt, self.num_w, self.sellers, self.buyers)
+
+    '''End of the run'''
+    print("\n************\nPut a summary here.\n************")
+    # print('Final number buyers: ',
+    #   self.schedule.get_type_count(Buyer))
+    # print('Final number sellers: ',
+    #     self.schedule.get_type_count(Seller))
 
 
 class Buyer(Agent):

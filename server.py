@@ -4,7 +4,7 @@ from mesa.visualization.modules import CanvasGrid, ChartModule
 
 color_buyer = "#f5f5f5" # very light grey
 color_seller = "#00FF00"
-price_color_on = 1 # display seller price in their color
+price_color_on = 0# display seller price in their color
 color_WM = "#FF0000"
 modelname = "LFABM"
 
