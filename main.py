@@ -223,12 +223,11 @@ class Trade(Model):
         max_y = self.sellers[max_sid].pos[1]
         if(self.entryDebug):
           print("Max Cash, sid:", max_sid, ", Cell:(" + str(max_x) + ", " + str(max_y) + ")")
+          print("-Neighbor Ages:", end=" ")
 
         new_sellers = False
         # Check the age of all firms nearby the max cash balance firm
         # (wants to avoid new firms)
-        if(self.entryDebug):
-          print("-Neighbor Ages:", end=" ")
 
         for neighbor in self.grid.get_neighbors((max_x, max_y),True,True,self.entryRadius):
           if(isinstance(neighbor, Seller) and self.entryDebug): print(str(neighbor.age), end=" ")
@@ -292,8 +291,7 @@ class Trade(Model):
       self.prices[sid] = price
 
       if (self.entry >= 1 and self.entryDebug):
-        print("\n**********\n", "Entry!!", "\n**********")
-        print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
+        entry_NewFirm(sid, x, y)
 
       self.mktresearch = False
 

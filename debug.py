@@ -33,6 +33,13 @@ def network(arg):
   for buyer in arg.values():
     print(buyer.ties)
 
+'''
+Entry
+'''
+def entry_NewFirm(sid, x, y):
+  print("\n**********\n", "Entry!!", "\n**********")
+  print("sid:", sid, ", Cell:(" + str(x) + ", " + str(y) + ")")
+
 
 '''
 Show seller information
