@@ -24,6 +24,6 @@ lb,1
 ub,10000
 up,1.05
 down,0.99
-α,3
-β,3
-γ,1
+alpha,3
+beta,3
+gamma,1

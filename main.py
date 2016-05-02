@@ -139,14 +139,14 @@ class Trade(Model):
       x = np.random.randint(self.width)
       y = np.random.randint(self.height)
 
-      α = d['α']
+      α = d['alpha']
       trust = {}
-      β = d['β']*np.random.rand()
+      β = d['beta']*np.random.rand()
       for j in range(ini_sellers):
         trust[j] = np.random.rand()
       for j in range(self.num_w):
         trust[j] = self.trust_w
-      γ = d['γ']
+      γ = d['gamma']
 
       '''
       Network ties
