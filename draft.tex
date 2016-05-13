@@ -31,7 +31,7 @@
 \noindent 
 It seems that local food systems are driven by the factors that play minor roles in conventional food systems, which are characterized by interaction and individual heterogeneity. There are two key interactions: networking \& recommendation among consumers, and trust building between consumers and producers. Diverse motives for food transaction include social, cultural, political, and ethical considerations. In order to understand local food systems, given the dynamical process and heterogeneity, agent-based computational modeling is considered more suitable than the traditional analytical approach.\\\\
 \noindent
-Keywords: \textit{local food system, ABM}
+Keywords: local food system, ABM, trust, network, price competition
 \end{abstract}
 
 \pagebreak
@@ -44,7 +44,7 @@ Despite the fact that local food systems constitute a small portion of the entir
 
 To that end, we appreciate more realism than social scientists normally do. Following \textcite{Miller2009}, we attempt to model realistic ``in-between'' situations. For instance, agents are neither perfectly rational nor completely ignorant; the number of agents are neither a few nor infinite; and space and time are neither absent nor unbounded. Clearly, this is not how traditional analytical models are constructed, and cause and effect is less apparent than in closed-form equations. In order to make the internal mechanics transparent as well as flexible and extendable, we write codes in Python building upon Mesa \parencite{Mesa2016}, an open-source ABM framework. Our codes are also open-source and available on GitHub.com \parencite{Saikai2016}.
 
-The paper first illustrate local food systems and agent-based modeling, neither of which is well recognized in economics. The model is designed to help assess the performance of a given system under alternative mechanisms of interactions and varying configurations of parameters. It is in essence a computational counterpart of comparative statics \parencite{Judd2006}. Therefore, the model description starts with defining the performance metrics. Then, we explain key variables and parameters, followed by details of the underlying interactions. Finally, we briefly provide what is expected as outputs.
+The paper first illustrates local food systems and agent-based modeling, neither of which is well recognized in economics. The model is designed to help assess the performance of a given system under alternative mechanisms of interactions and varying configurations of parameters. It is in essence a computational counterpart of comparative statics \parencite{Judd2006}. Therefore, the model description starts with defining the performance metrics. Then, we explain key variables and parameters, followed by details of the underlying interactions. Finally, we briefly provide what is expected as outputs and discuss what to be done.
 
 \section{Local food systems}
 (to be written)
@@ -95,14 +95,14 @@ For the sake of analytical simplicity, we adopt the linear functional forms. How
 At each period, all the consumers move first, followed by all the producers. The order within a type of agents is random, which is immaterial under the current specification. 
 
 \subsubsection{Purchase}
-In maximizing utility, besides individual information (i.e. trust and distance), consumers are assumed to have access to each producer's price $(p_j)$ and embeddedness level $(e_j)$. Then, at each period, consumers create a list of possible utilities and, based on the relative utility as probability weights, randomly choose a single producer to buy from. The reason for the stochastic process is the fact that consumers do not always strictly follow their internal ranking, i.e. random shocks may influence the decisions such as being sick and feeling lazy. This is a matter of data fitting \& calibration of the model. Loosely said, we currently maintain ``moderate chances'' for deviation. Based on \textcite{Walter2008}, we compute the $i$th consumer's weight on $j$th producer $(w_{ij})$ as follows:
+In maximizing utility, besides individual information (i.e. trust and distance), consumers are assumed to have access to each producer's price $(p_j)$ and embeddedness level $(e_j)$. At each period, consumers create a list of possible utilities and then, based on the relative utilities as probability weights, randomly choose a single producer to buy from. The reason for the stochastic process is the fact that consumers do not always strictly follow their internal ranking, i.e. random shocks may influence the decisions such as being sick and feeling lazy. This is a matter of data fitting \& calibration of the model. Loosely said, we currently maintain ``moderate chances'' for deviation. Based on \textcite{Walter2008}, we compute the $i$th consumer's weight on $j$th producer $(w_{ij})$ as follows:
 \begin{align*}
 %  \underline{u}_i &\equiv \min_j\{u_{ij}\} \\
   \Delta_i &\equiv \max_j\{u_{ij}\} - \min_j\{u_{ij}\} \\
   u^*_{ij} &\equiv \exp \left[\frac{15(u_{ij} - \min\{u_{ij}\})}{\Delta_i} - 5 \right] \\
   w_{ij} &= \frac{u^*_{ij}}{\sum_j u^*_{ij}} .
 \end{align*}
-This way, consumers buy from the highest-ranked producer approximately 60 -- 90\% of the time, and 2/3 of the lowest producers have essentially no chances. Again, it is a matter of calibration and so, if data suggests different choice behavior, we should adjust the parameters and/or the functional form.
+This way, consumers buy from the highest-ranked producer approximately 60 -- 90\% of the time, and 2/3 of the lowest producers have essentially no chances. Again, it is a matter of calibration and so, if data suggests different choice behavior, we should adjust the parameters and/or the functional forms.
 
 \subsubsection{Trust update}
 At each period, a consumer updates her trust levels in all the producers. Here, as well, we try to incorporate social embeddedness into the process. The idea is that the more embedded, the greater chance to interact with the producer and therefore increase the trust. As a result, we assume that an upward adjustment takes place with probability of $0.5 + \nicefrac{e_j}{2}$. Specifically, the $i$th consumer's trust in $j$th producer is updated as follows:
